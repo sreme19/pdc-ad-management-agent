@@ -36,3 +36,20 @@ creatives/_competitor-reference/**/*.mov
 # _source/, which IS tracked and describes what every folder holds.
 creatives/*/_source/*
 !creatives/*/_source/README.md
+
+# Archived raw generations (creatives/_archive/).
+# Batches of Grok/Flow output pulled off a session and parked rather than sorted —
+# 74 files and ~29MB in the first one alone. Same reasoning as the _source rule
+# above and the same failure it prevents: git cannot shed a binary once it has
+# taken it, and nothing references these. They escaped that rule only because they
+# sit under _archive/ rather than under a creative's own _source/.
+# Ignored by extension rather than wholesale, so the README.md describing each
+# batch stays tracked — as with _competitor-reference, the durable record is the
+# prose, and the files themselves are non-regenerable but also unused.
+creatives/_archive/**/*.jpg
+creatives/_archive/**/*.jpeg
+creatives/_archive/**/*.png
+creatives/_archive/**/*.webp
+creatives/_archive/**/*.gif
+creatives/_archive/**/*.mp4
+creatives/_archive/**/*.mov
