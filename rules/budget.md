@@ -13,6 +13,20 @@ Source: Sree's Aug 7 log. Every `ad-setup-loop` recommendation must state a budg
 - **Default daily spend: ₹300 per ad set** — set by the app owner on 2026-08-28, applied live to the
   first Meta ad set the same day, and the default `propose --budget-cap` uses. This is the operating
   level, deliberately chosen for burn rate over read speed.
+- **Default duration: 2 days per ad set** — set by the app owner on 2026-09-05, standing from that
+  date, and the default `propose --duration-days` uses. Replaces the 5 days every record before it
+  carried. ₹300 × 2 means **a test now costs ₹600**, which is the point: more shots at the same
+  monthly budget.
+
+  **Two consequences, stated rather than wished away.** First, 2 days is shorter than the kill/double
+  window below, which is written as 3–5 days — so that window no longer decides when to stop; the end
+  date does. A 2-day ad set stops itself, and the decision it hands back is whether to *re-run* it
+  longer, not whether to pause it. Second, and this is the one that bites: `snap-push` stamps the ad
+  squad's start at the moment of **creation**, not the moment of enabling, and everything is created
+  PAUSED. At 5 days, a day's delay between push and enable cost a fifth of the test. At 2 days it
+  costs half of it. **Push and enable the same day, or amend the duration before pushing** — nothing
+  in the code will warn about this, because from Snap's side a squad that only ran one day is not an
+  error, just a squad that reached its end date.
 - **Full-experiment threshold: ₹800–1,200 per active ad set — kept as calibration, no longer a floor.**
   The original rule (Sree's Aug 7 log) made this a minimum, and its reasoning still stands: below
   roughly this level the platform's delivery algorithm rarely exits its learning phase, so a read is
@@ -34,7 +48,10 @@ Source: Sree's Aug 7 log. Every `ad-setup-loop` recommendation must state a budg
 2. **Measure.** Installs, landing-page views, Bestie-conversation-starts, or whatever the campaign's
    stated success metric is (see `ad-setup-loop`'s brief template — every proposal names one).
 3. **Kill or double.** Pause a losing ad set after **3–5 days or 50–100 events**, whichever comes
-   first. Move its budget to whatever's winning.
+   first. Move its budget to whatever's winning. **Since 2026-09-05 the 2-day default duration usually
+   ends the set before this window opens** — so read this step as governing the *re-run* decision (does
+   this ad set deserve a second, longer window?) rather than the pause decision, which the end date has
+   already made.
 4. **Exploit.** Scale the proven creative × audience × bid combination.
 
 ## Signup targets (context, not a hard budget rule)

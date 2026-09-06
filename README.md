@@ -129,12 +129,14 @@ did; `wiki-export/Command-Cheatsheet.md` carries the same list with the reasonin
 |---|---|
 | `propose` | Record a mode-5 recommendation before you execute it |
 | `snap-leads` | Register/inspect where Snap delivers lead-form submissions (webhook, per form) |
+| `snap-audience` | Create/grow a Snap Custom Audience or build a Lookalike from one |
 | `snap-push` | Create a proposed recommendation in Snap Ads Manager, PAUSED, then diff it back |
 | `snap-push-story` | Create a proposed Story Ad (COMPOSITE: a tap-through sequence of WEB_VIEW snaps) on Snap, PAUSED, then diff it back |
 | `meta-push` | Create a proposed recommendation in Meta Ads Manager, PAUSED, then diff it back |
 | `snap-push-lead` | Create a proposed LEAD recommendation (video + on-platform form) on Snap, PAUSED, then diff it back |
 | `meta-push-lead` | Create a proposed LEAD recommendation (video + instant form) in Meta, PAUSED, then diff it back |
 | `amend` | Revise a still-proposed recommendation, with an audit trail of what changed |
+| `verify-tracking` | Run rules/tracking.md's post-launch check against live user_acquisition data for a live recommendation |
 | `log-setup` | Record the real IDs after setting the ad up by hand |
 | `note` | Append a dated note to a record — for things that change mid-run |
 | `log-review` | Record mode-6's verdict on a live recommendation |
@@ -157,7 +159,7 @@ did; `wiki-export/Command-Cheatsheet.md` carries the same list with the reasonin
 #### `propose`
 
 ```
-ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-name AD_SET_NAME --ad-name AD_NAME --targeting-summary TARGETING_SUMMARY --creative-ref CREATIVE_REF --destination-url DESTINATION_URL [--budget-cap BUDGET_CAP] --duration-days DURATION_DAYS --brief BRIEF [--from-idea FROM_IDEA] --gender {FEMALE,MALE} --min-age MIN_AGE --max-age MAX_AGE --countries COUNTRIES [--os {ANDROID,IOS}] [--expansion {on,off}] slug
+ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-name AD_SET_NAME --ad-name AD_NAME --targeting-summary TARGETING_SUMMARY --creative-ref CREATIVE_REF --destination-url DESTINATION_URL [--budget-cap BUDGET_CAP] [--duration-days DURATION_DAYS] --brief BRIEF [--from-idea FROM_IDEA] --gender {FEMALE,MALE} --min-age MIN_AGE --max-age MAX_AGE --countries COUNTRIES [--os {ANDROID,IOS}] [--expansion {on,off}] slug
 ```
 
 #### `snap-leads`
@@ -166,16 +168,22 @@ ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-n
 ad-agent snap-leads [-h] [--form-id FORM_ID] [--url URL] [--integration-id INTEGRATION_ID] {forms,list,register,test,delete}
 ```
 
+#### `snap-audience`
+
+```
+ad-agent snap-audience [-h] [--name NAME] [--file FILE] [--description DESCRIPTION] [--seed-name SEED_NAME] [--country COUNTRY] [--similarity {REACH,BALANCE,SIMILARITY}] {list,upsert,lookalike}
+```
+
 #### `snap-push`
 
 ```
-ad-agent snap-push [-h] [--headline HEADLINE] [--dry-run] [--accept-campaign-cap] rec_id
+ad-agent snap-push [-h] [--headline HEADLINE] [--cta CTA] [--optimization-goal OPTIMIZATION_GOAL] [--dry-run] [--accept-campaign-cap] rec_id
 ```
 
 #### `snap-push-story`
 
 ```
-ad-agent snap-push-story [-h] [--headline HEADLINE] [--preview-headline PREVIEW_HEADLINE] [--dry-run] [--accept-campaign-cap] rec_id
+ad-agent snap-push-story [-h] [--headline HEADLINE] [--preview-headline PREVIEW_HEADLINE] [--cta CTA] [--dry-run] [--accept-campaign-cap] rec_id
 ```
 
 #### `meta-push`
@@ -200,6 +208,12 @@ ad-agent meta-push-lead [-h] --video VIDEO --message MESSAGE [--form-id FORM_ID]
 
 ```
 ad-agent amend [-h] --reason REASON [--campaign-name CAMPAIGN_NAME] [--ad-set-name AD_SET_NAME] [--ad-name AD_NAME] [--targeting-summary TARGETING_SUMMARY] [--creative-ref CREATIVE_REF] [--destination-url DESTINATION_URL] [--budget-cap BUDGET_CAP] [--duration-days DURATION_DAYS] [--gender {FEMALE,MALE}] [--min-age MIN_AGE] [--max-age MAX_AGE] [--countries COUNTRIES] [--os {ANDROID,IOS}] [--expansion {on,off}] rec_id
+```
+
+#### `verify-tracking`
+
+```
+ad-agent verify-tracking [-h] [--since SINCE] [--detail] rec_id
 ```
 
 #### `log-setup`

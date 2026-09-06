@@ -58,6 +58,19 @@ depend on that file being current.
    `ad-intake` finding, or a direct ask? Name the persona (`rules/targeting.md`), the network, and the
    one success metric this ad set is being tested against (landing-page views, taps, Bestie-conversation
    starts, signups — match it to the funnel stage in the campaign name).
+1b. **If the funnel shape is new, write the funnel coverage table BEFORE deciding anything else** —
+   the template and its rules are in `rules/tracking.md` ("The funnel coverage table"). One row per
+   step a real person walks, with `Real-time?` and `Per-ad?` as separate yes/no columns and a
+   three-valued verdict (✅ observed working · ❌ not measurable at the needed granularity · ❓ should
+   work, never observed). Standing requirement from the app owner, 2026-09-05.
+
+   Do it here, at the top, not at reporting time. On 2026-09-05 the table was produced *after* an ad
+   was built and it changed the answer: it showed that the store-bound funnel's only real-time per-ad
+   signal is the swipe, that Play Console lags ~6 days so a 2-day test is judged before its data
+   exists, and that our own "installs" are really first-opens (139 acquisitions vs 71 first opens —
+   about half of installers never open). Any of those three could have changed the ad set's
+   optimisation goal, its duration, or its stated success metric. A ❓ row becomes a question in
+   `research/questions/` in the same turn; it never gets rounded up to ✅.
 2. **Decide names, following `rules/naming.md` exactly.** Campaign, ad set, ad — all three, plus the
    UTM parameters that go on the landing URL.
 3. **Decide targeting** — persona, age band, gender, geography, interest categories, device targeting —
@@ -67,7 +80,13 @@ depend on that file being current.
    commission, following `rules/creative-style.md`'s tone, taglines, and visual identity. If it's a new
    asset, produce the Grok Imagine prompt pack per `rules/creative-generation.md` and take it through
    that file's §10 QA gate before referencing it here — nothing reaches `propose` without a recorded
-   `pass`.
+   `pass`. **For a Flow→Grok video asset, obey `creative-generation.md` §2b when generating frames:**
+   re-dress/re-locate through Flow + Nano Banana 2 (it preserves the face; Grok restyle doesn't), and
+   generate each scene's 3-angle set from **one** Flow generation, not three fresh prompts of the same
+   location — a Grok multi-reference batch holds a stable background only if the frames are
+   same-generation siblings, otherwise drop to a single frame or the clip travels
+   (`lrn-2026-08-30-grok-multiref-must-be-same-generation`). Every Flow still passes
+   `strip_flow_watermark` (150px); crop the Grok wordmark (90px) after motion.
 4b. **Check the destination before you write a brief around it.** Name the landing URL this ad set will
    send traffic to and look it up in `rules/destinations.yaml`. If its `audience` doesn't match the ad
    set's gender, or `paid_traffic` is false, or the page isn't registered at all, `propose` will refuse

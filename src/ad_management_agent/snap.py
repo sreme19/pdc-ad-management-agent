@@ -21,6 +21,7 @@ Amounts are micro-currency throughout: 1 INR = 1_000_000 micro.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import mimetypes
 import urllib.error
@@ -32,6 +33,65 @@ from pathlib import Path
 API = "https://adsapi.snapchat.com/v1"
 TOKEN_URL = "https://accounts.snapchat.com/login/oauth2/access_token"
 MICRO = 1_000_000
+
+# The default form copy, and the reason it is a default rather than a literal.
+#
+# "One step left" is TRUE when the end page is /get/w-apply — a real 18+ gate
+# follows. It is FALSE when the end page is the Play listing, because nothing
+# follows but the install. The strings were hardcoded here until 2026-09-04,
+# when the first direct-to-store lead ad would have shipped promising a step
+# that did not exist. Copy that describes the funnel cannot be fixed in the
+# funnel it does not describe, so it moved out here.
+FORM_COPY_PAGE = {
+    "title": "Bas ek step baaki hai",
+    "description": "Aapka apply almost complete hai.",
+}
+#: For an end page that IS the store. Says what is true — the apply is done,
+#: the app is next — and claims no status she was not evaluated for.
+FORM_COPY_STORE = {
+    "title": "Apply ho gaya",
+    "description": "Ab app download karo — baaki sab wahin.",
+}
+
+# The lead form END PAGE's allowed call_to_action values. This is a DIFFERENT and
+# much smaller enum than a creative's, which is the trap: a creative takes
+# INSTALL_NOW, an end page does not. Confirmed 2026-09-04 both ways — Snap's own
+# lead-generation-ads doc lists exactly these twelve, and a probe POST carrying
+# INSTALL_NOW came back E25020 "End page CallToAction must be one of the allowed
+# values" (creating nothing). Closes q-2026-09-04-snap-lead-end-page-cta.
+#
+# WORTH KNOWING HOW THAT PROBE NEARLY LIED. The POST returns HTTP 200 with
+# request_status ERROR and the real reason one level down in
+# sub_request_error_reason, so a probe that only checked for an exception read
+# three invalid values as accepted. `_one` is what catches this in the real path;
+# anything hand-rolled around it has to check sub_request_status itself.
+END_PAGE_CTAS = {
+    "VIEW_WEBSITE", "BOOK_NOW", "LEARN_MORE", "DONATE", "SPECIAL_OFFER",
+    "SCHEDULE_NOW", "BUY_TICKETS", "TEST_DRIVE", "APPLY_NOW", "GET_COUPON",
+    "CLAIM_SAMPLE", "FREE_TRIAL",
+}
+
+#: Our own default: the end page is a page of ours, and the button says so.
+END_PAGE_CTA_PAGE = "VIEW_WEBSITE"
+
+# For an end page that is the app store. There is no install-flavoured value in
+# the enum above, so this is the best TRUE one rather than the one we wanted:
+#
+#   * INSTALL_NOW / DOWNLOAD / GET_APP — not in the enum. Rejected by the API.
+#   * FREE_TRIAL, SPECIAL_OFFER, GET_COUPON, BUY_TICKETS — purchase and offer
+#     language, which compliance.md #2 forbids outright (there are no
+#     subscriptions, purchases or credits, and copy may never imply otherwise).
+#     FREE_TRIAL is the worst of them: it implies a paid tier after the trial.
+#   * DONATE, TEST_DRIVE, BOOK_NOW, SCHEDULE_NOW, CLAIM_SAMPLE — plainly false.
+#   * APPLY_NOW — false HERE specifically. It is right on the creative, where the
+#     tap opens the form; on the end page she has ALREADY applied, so a second
+#     "Apply now" describes a step that no longer exists.
+#   * VIEW_WEBSITE — what shipped first, and the store is not a website of ours.
+#
+# LEARN_MORE is true (the listing is more about the app), claims nothing, and
+# implies no purchase. The instruction itself lives in the end-page copy above
+# ("Ab app download karo"), which is not enum-constrained.
+END_PAGE_CTA_STORE = "LEARN_MORE"
 
 
 class SnapError(RuntimeError):
@@ -425,8 +485,8 @@ class SnapClient:
             )
         return hits[0] if hits else None
 
-    def create_lead_form(self, *, name: str, privacy_url: str,
-                         end_page_url: str) -> dict:
+    def create_lead_form(self, *, name: str, privacy_url: str, end_page_url: str,
+                         copy: dict | None = None, end_page_cta: str = END_PAGE_CTA_PAGE) -> dict:
         """Create the instant form: first name, phone, email, and the handoff.
 
         The end page is the funnel hinge — its button carries her to /get/w-apply
@@ -436,13 +496,25 @@ class SnapClient:
         documents no way to change the URL after. Ad-squad-level attribution is
         the accepted cost, on the record in the module comment above.
         """
+        copy = copy or FORM_COPY_PAGE
+        if end_page_cta not in END_PAGE_CTAS:
+            # Refuse here rather than let the API refuse: a form POST returns 200
+            # with the failure buried in sub_request_error_reason, and this is the
+            # one field where a creative's own (larger) enum is the obvious wrong
+            # guess. See END_PAGE_CTAS.
+            raise SnapError(
+                f"end_page_cta {end_page_cta!r} is not one of Snap's lead-form end page "
+                f"values: {', '.join(sorted(END_PAGE_CTAS))}.\n"
+                "Note this is NOT the creative's call_to_action enum — INSTALL_NOW is valid "
+                "there and rejected here (E25020)."
+            )
         res = self.post(
             f"/adaccounts/{self.cfg['ad_account_id']}/lead_generation_forms",
             {"lead_generation_forms": [{
                 "ad_account_id": self.cfg["ad_account_id"],
                 "name": name,
-                "title": "Bas ek step baaki hai",
-                "description": "Aapka apply almost complete hai.",
+                "title": copy["title"],
+                "description": copy["description"],
                 # FIRST_NAME + LAST_NAME, not FIRST_NAME alone: Snap refuses a
                 # lone first name (E25012, live rejection 2026-08-29), and the
                 # account's own UI-made forms all use this pair — observed
@@ -460,10 +532,10 @@ class SnapClient:
                 # UI-made form on this account actually stores — an ARRAY inside
                 # default_end_page — read back on 2026-08-29 rather than guessed.
                 "default_end_page": {
-                    "headline": "Bas ek step baaki hai",
-                    "description": "Aapka apply almost complete hai.",
+                    "headline": copy["title"],
+                    "description": copy["description"],
                     "end_page_properties": [{
-                        "call_to_action": "VIEW_WEBSITE",
+                        "call_to_action": end_page_cta,
                         "url": end_page_url,
                     }],
                 },
@@ -585,6 +657,31 @@ class SnapClient:
         body["web_view_properties"] = {"url": url}
         return self._one(self.put(f"/adaccounts/{self.cfg['ad_account_id']}/creatives",
                                   {"creatives": [body]}), "creatives")
+
+    def set_creative_lead_form(self, creative: dict, form_id: str) -> dict:
+        """Point an existing LEAD_GENERATION creative at a different form.
+
+        A LEAD FORM IS IMMUTABLE. Snap fixes its copy, its end page and that end
+        page's call_to_action at creation and documents no update, so correcting
+        any of them means making a NEW form and repointing the creative — which is
+        the only mutable link in the chain, and mutable even while the ad is live.
+
+        Added 2026-09-04 to correct `moveon-lead-play`'s end-page button, which
+        shipped VIEW_WEBSITE against a Play listing that is not a website of ours.
+
+        `set_creative_url`'s field list, for its reason: Snap's update is a full
+        replace, so the body is the object as it exists with exactly one key
+        changed, and a field left out is a field deleted. Note the endpoint —
+        PUT /creatives is 405; creatives update under the ad account (E0001).
+        """
+        body = {k: creative[k] for k in ("id", "ad_account_id", "name", "type", "headline",
+                                         "brand_name", "call_to_action", "shareable",
+                                         "top_snap_media_id", "top_snap_crop_position",
+                                         "profile_properties")
+                if k in creative}
+        body["lead_generation_form_id"] = form_id
+        return self._one(self.put(f"/adaccounts/{self.cfg['ad_account_id']}/creatives",
+                                  {"creatives": [body]}, unchanged=creative), "creatives")
 
     def create_ad(self, *, name, ad_squad_id, creative_id, ad_type="REMOTE_WEBPAGE") -> dict:
         """`ad_type` must match the creative's own category, but not by sharing its
@@ -781,3 +878,130 @@ class SnapClient:
     def delete_lead_webhook(self, integration_id: str) -> dict:
         """Stop delivery. Leads submitted while no webhook exists are NOT queued."""
         return self.delete(f"/lead_gen/integrations/{integration_id}")
+
+    # ---- audiences (Customer List / Lookalike) ----------------------------
+    #
+    # Added 2026-09-01, at the app owner's request, after a Custom Audience and
+    # a Lookalike were built by hand in Ads Manager because this file had no
+    # method for either. The ask was explicit: future audience add/update
+    # should not require clicking through the UI again.
+    #
+    # This is a DIFFERENT object family from everything above, and the
+    # paused-only rule does not apply to it the way it applies to a campaign or
+    # ad squad: a segment carries no `status` an ad can be served from and no
+    # budget, so there is nothing in its payload for `_call`'s safety check to
+    # refuse — it passes through unmodified, which is correct. Nothing here
+    # gains the ability to enable anything or move a budget; it only lets a
+    # customer list be created and grown, and a lookalike be built from one.
+    # Attaching an audience to a live ad squad's targeting remains a separate,
+    # human action in Ads Manager, exactly like it was the day this was
+    # written — this module still has no method that edits an existing ad
+    # squad's targeting.
+
+    @staticmethod
+    def hash_email(email: str) -> str:
+        """Snap's Customer List match key: lowercase, trimmed, SHA-256 hex.
+
+        Getting normalization wrong doesn't error — it just fails to match, and
+        a segment sitting at 0 users forever looks identical to one still being
+        processed. Match Snap's own rule exactly rather than guessing: strip
+        whitespace, lowercase, then hash.
+        """
+        return hashlib.sha256(email.strip().lower().encode()).hexdigest()
+
+    def find_audience(self, name: str) -> dict | None:
+        """Exact-name lookup, same refuse-to-guess shape as find_campaign.
+
+        Snap does not enforce unique names on segments any more than it does
+        on campaigns, so a duplicate here would have the same silent-wrong-one
+        failure mode.
+        """
+        res = self.get(f"/adaccounts/{self.cfg['ad_account_id']}/segments")
+        hits = [s.get("segment", s) for s in res.get("segments", [])
+                if s.get("segment", s).get("name") == name]
+        if len(hits) > 1:
+            ids = ", ".join(h["id"] for h in hits)
+            raise SnapError(
+                f"{len(hits)} audiences are named {name!r} ({ids}).\n"
+                "Refusing to guess which one to use — rename or delete the duplicate."
+            )
+        return hits[0] if hits else None
+
+    def create_customer_list_audience(self, name: str, description: str = "",
+                                      retention_in_days: int = 180) -> dict:
+        """Create an empty Customer List segment, matched on hashed email.
+
+        Empty on purpose: uploading is a separate call (`upload_audience_users`)
+        because Snap's API treats "create the container" and "add people to it"
+        as two different operations, and `upsert_customer_list_audience` below
+        is what most callers actually want — create-if-missing then upload in
+        one step.
+        """
+        res = self.post(f"/adaccounts/{self.cfg['ad_account_id']}/segments", {"segments": [{
+            "name": name,
+            "description": description,
+            "source_type": "FIRST_PARTY",
+            "schema": ["EMAIL_SHA256"],
+            "ad_account_id": self.cfg["ad_account_id"],
+            "retention_in_days": retention_in_days,
+        }]})
+        return self._one(res, "segments")
+
+    def upload_audience_users(self, segment_id: str, emails: list[str]) -> dict:
+        """Add people to an existing Customer List segment by email.
+
+        Additive, not a replace: this is how the same audience is "updated" as
+        new leads come in — call it again with the new emails, the old ones
+        stay. Hashing happens here, not on the caller, so no plaintext email
+        is ever the thing that gets logged or committed by accident.
+        """
+        hashed = [self.hash_email(e) for e in emails if e and e.strip()]
+        if not hashed:
+            raise SnapError("no usable emails to upload — every value was empty")
+        return self.post(f"/segments/{segment_id}/users", {
+            "users": [{"schema": ["EMAIL_SHA256"], "data": [[h] for h in hashed]}]
+        })
+
+    def upsert_customer_list_audience(self, name: str, emails: list[str],
+                                      description: str = "") -> dict:
+        """Find-or-create a Customer List by name, then upload emails to it.
+
+        The one entry point most callers want: run this again next month with
+        a longer email list and it grows the same audience rather than making
+        a second one — the thing the app owner asked for by name.
+        """
+        audience = self.find_audience(name)
+        if audience is None:
+            audience = self.create_customer_list_audience(name, description)
+        self.upload_audience_users(audience["id"], emails)
+        return audience
+
+    def create_lookalike_audience(self, name: str, *, seed_segment_id: str,
+                                  country: str, similarity: str = "SIMILARITY",
+                                  description: str = "") -> dict:
+        """Build a Lookalike off an existing Customer List (or other) segment.
+
+        `similarity` is Snap's own three-tier vocabulary — REACH (broadest),
+        BALANCE, SIMILARITY (narrowest) — not a percentage; there is no numeric
+        knob to set here despite how the Ads Manager UI's audience-naming
+        convention in this account (`_1PCT_`) reads. Default is the narrowest
+        tier because every seed built by this codebase so far has been small,
+        and a small seed drifts fastest at the broadest tier.
+        """
+        res = self.post(f"/adaccounts/{self.cfg['ad_account_id']}/segments", {"segments": [{
+            "name": name,
+            "description": description,
+            "source_type": "LOOKALIKE",
+            "ad_account_id": self.cfg["ad_account_id"],
+            "lookalike_spec": {
+                "country": country,
+                "type": similarity,
+                "seed_segment_id": seed_segment_id,
+            },
+        }]})
+        return self._one(res, "segments")
+
+    def list_audiences(self) -> list[dict]:
+        """Every Custom Audience / Lookalike on the account."""
+        res = self.get(f"/adaccounts/{self.cfg['ad_account_id']}/segments")
+        return [s.get("segment", s) for s in res.get("segments", [])]

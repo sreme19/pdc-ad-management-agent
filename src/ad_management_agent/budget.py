@@ -15,6 +15,18 @@ From rules/budget.md as amended 2026-08-28:
     `inconclusive` as the normal verdict there, not a disappointment.
   * Kill or double after 3-5 days, or 50-100 events, whichever comes first.
 
+From rules/budget.md as amended 2026-09-05:
+
+  * Default duration: 2 days per ad set — the app owner's standing decision,
+    replacing the 5 days every earlier record carried. Rs 300 x 2 = Rs 600 a
+    test. Mirrored here for the same reason the daily default is: a flag default
+    is enforcement, a paragraph is a hope somebody reads it.
+  * It is SHORTER than the kill window above, deliberately. The end date makes
+    the pause call now; the 3-5 day window governs the re-run decision instead.
+  * The push commands stamp the ad squad's start at CREATION, not at enabling,
+    and everything is created PAUSED. At 2 days a one-day gap between push and
+    enable costs half the test, and nothing warns about it.
+
 `below_floor` and `floor_note` keep their names — every call site is a warning,
 and the warning is still true. What changed is what the number means: it now
 marks where a read stops being trustworthy, not where a proposal stops being
@@ -23,6 +35,7 @@ acceptable.
 from __future__ import annotations
 
 DEFAULT_DAILY_INR = 300.0
+DEFAULT_DURATION_DAYS = 2
 
 MIN_VIABLE_DAILY_INR = 800.0
 MAX_VIABLE_DAILY_INR = 1200.0

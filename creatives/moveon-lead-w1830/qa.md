@@ -329,3 +329,46 @@ glitch and audio gates all passed on their own.
 
 Effective gate state after override: `pass` (by owner decision; scope: asset 2, this
 deployment). Platform-side review is Snap's own and this override binds nothing there.
+
+---
+
+## Watermark clearance — `asset-a.mp4`, 2026-09-05
+
+`watermark-check: pass`
+
+Run for `rec-2026-09-05-moveon-getw-w1830-snap` (traffic ad into `/get/w`), because
+`snap-push` refuses a folder with no recorded clearance and this folder had none.
+
+**Method.** Every frame at 1 fps across the full 20.0s (20 frames) through
+`watermark.scan`'s bottom-right corner-contrast detector, plus zoomed corner crops of
+the four scenes at 4s, 6s, 11s and 19s covering the x420–720 / y1020–1280 region the
+`§6.2 imagery` gate above names.
+
+**Result.** No AI-tool watermark, no glyph, and **no smear rectangle** anywhere. Sixteen
+of twenty frames scored a flat 0. The four that scored above it all resolve to real
+scene content on inspection: 4s = the lit phone screen on the bedspread (58); 9–13s =
+the sunlit arm and orange top against the black chair back in the office scene
+(99–114). The library desk at 6s and the saree fabric at 19s are flat, clean, and would
+show a smear instantly if one were there.
+
+**Read this before trusting the `§6.2 imagery` and `§6.3 glitch` sections above: they
+describe a file that is no longer in this folder.** Those sections QA'd
+`energy-kahan-jaati-hai-ROUGH-v3.mp4` on 2026-08-29 and recorded a watermark smeared
+over rather than cropped, plus three craft defects. `asset-a.mp4` is dated 2026-09-01,
+is a later re-cut, and **all four are absent from it** — checked frame by frame at the
+timestamps those sections name:
+
+| Recorded defect (ROUGH-v3, 2026-08-29) | `asset-a.mp4`, checked 2026-09-05 |
+|---|---|
+| Stationary blurred-out rectangle, bottom-right, every scene | absent — corner clean in all four scenes |
+| ~1.5–2.2s whited-out irisless eyes | absent — eyes closed and normally rendered at 1.8s |
+| ~11–13s stacked duplicate frame with a hard horizontal seam | absent — single clean office frame at 11.5s |
+| ~14s warped, tangled finger cluster | absent — hands clean at 14.2s |
+
+Still true of this cut and NOT re-litigated here: 720×1280, under the 1080×1920 that
+`creative-generation.md` §7 specifies. The 2026-08-29 owner override above covers this
+asset's remaining flagged items.
+
+**What this clearance does not cover.** The watermark gate only. The scan is a corner
+detector — it answers "is there a generation mark in the corner," not "is this asset
+good." Nothing here revisits the owner override, and nothing here is a platform review.

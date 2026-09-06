@@ -14,6 +14,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from . import budget as budgetrules
 from . import destinations
@@ -348,6 +349,156 @@ def _utm_url(rules_dir: Path, network: str, destination: str, campaign_name: str
         rules_dir, network, campaign_name, ad_squad_id, ad_id, ad_name)
 
 
+#: The `ra_lp` this repo writes when the install came straight off a Snap lead
+#: form with no landing page in between. `landing_page` in
+#: pocket-dating-coach's user_acquisition is free text (no check constraint, 40
+#: chars at /api/attribution/install), so this is a label, not an enum member —
+#: but it must never be one of that repo's real page ids, or a direct-to-store
+#: install would be counted as a page that never rendered.
+PLAY_DIRECT_LANDING_PAGE = "snap_lead_form"
+
+#: The same label for a TRAFFIC ad whose swipe-up goes straight to the store with
+#: no page and no form anywhere in the funnel. Distinct from
+#: PLAY_DIRECT_LANDING_PAGE on purpose: both mean "no page of ours rendered", but
+#: they are different funnels and collapsing them would make the two
+#: indistinguishable in user_acquisition — which is the one thing the label exists
+#: to prevent. Same constraint applies: never one of pocket-dating-coach's real
+#: page ids.
+PLAY_DIRECT_AD_LANDING_PAGE = "snap_ad_direct"
+
+#: The Meta equivalent of PLAY_DIRECT_AD_LANDING_PAGE, added 2026-09-06 for the
+#: first Meta ad pointed straight at the Play listing. A THIRD label rather than a
+#: reuse of the Snap one, for the reason the comment above gives: the label is the
+#: only thing in user_acquisition that says which funnel an install came off, and
+#: two networks running the same creative into the same store is precisely the
+#: comparison the label has to survive. Collapsing them would make the Meta arm
+#: and the Snap arm indistinguishable in exactly the readout they were built for.
+#: Still never one of pocket-dating-coach's real page ids — no page of ours renders.
+META_PLAY_DIRECT_AD_LANDING_PAGE = "meta_ad_direct"
+
+
+def _is_app_store(destination: str) -> bool:
+    """Is this destination an app store listing rather than a page of ours?"""
+    host = (urlsplit(destination).hostname or "").lower().removeprefix("www.")
+    return host in {"play.google.com", "apps.apple.com"}
+
+
+def _store_referrer_url(destination: str, utm_query: str, *, ra_src: str, ra_lp: str) -> str:
+    """Fold tracking INSIDE Play's `referrer` param — the only channel an install survives.
+
+    Shared by the lead path and the traffic path because getting this shape wrong
+    is silent in both. Appending the params to a listing URL instead produces a
+    link Play strips clean, and — when the listing already carries `?id=` —
+    a second `?` that corrupts the app id itself, so the link may not even open
+    the right listing. Both failures look like a working ad in Ads Manager.
+    """
+    referrer = f"{utm_query}&ra_src={ra_src}&ra_lp={ra_lp}"
+    sep = "&" if urlsplit(destination).query else "?"
+    return f"{destination}{sep}referrer={quote(referrer, safe='')}"
+
+
+def _snap_traffic_url(rules_dir: Path, destination: str, *, campaign_name: str,
+                      ad_squad_id: str, ad_id: str, ad_name: str) -> str:
+    """The Website URL for a Snap TRAFFIC ad — a page of ours, or a store listing.
+
+    Added 2026-09-05, when the first traffic ad was pointed at the Play listing and
+    `_utm_url` was found building `…details?id=com.riteangle.app?utm_source=…` for
+    it. Until then every traffic ad went to a page of ours, where appending the
+    query string is exactly right, so nothing had exercised the store branch.
+
+    ONE THING THIS PATH HAS THAT THE LEAD PATH CANNOT: `utm_id`, the ad id. A lead
+    form's end page is fixed when the form is created, which is before the ad
+    exists, so `_snap_lead_end_page` strips `utm_id` and its attribution stops at
+    ad-squad level. A traffic creative's URL is rewritten AFTER the ad is created
+    (cmd_snap_push does this already, for exactly this reason), so a store-bound
+    traffic ad carries ad-level attribution all the way into the install referrer.
+    Do not "harmonise" the two by dropping it.
+    """
+    if not _is_app_store(destination):
+        return _utm_url(rules_dir, "snap", destination, campaign_name,
+                        ad_squad_id, ad_id, ad_name)
+    utms = _utm_query(rules_dir, "snap", campaign_name, ad_squad_id, ad_id, ad_name)
+    return _store_referrer_url(destination, utms, ra_src="ad",
+                               ra_lp=PLAY_DIRECT_AD_LANDING_PAGE)
+
+
+def _meta_traffic_url(rules_dir: Path, destination: str, *, campaign_name: str,
+                      ad_set_id: str, ad_id: str, ad_name: str) -> str:
+    """The destination URL for a Meta TRAFFIC ad — a page of ours, or a store listing.
+
+    Added 2026-09-06, the Meta sibling of `_snap_traffic_url`, and it exists for the
+    same reason: the store branch had never been exercised on this network either.
+
+    **The Meta-specific trap is that `url_tags` looks like it already solves this
+    and does not.** Every prior Meta ad here put tracking in the ad's `url_tags`
+    field, which Meta APPENDS to the outbound URL at click time. That is right for a
+    page of ours, which reads the query string. Against a Play listing it is inert:
+    Play strips appended parameters and honours only its own `referrer=`. So a
+    store-bound Meta ad with url_tags set spends normally, resolves to the right
+    listing, and produces installs carrying no identifier at all — reported in Ads
+    Manager as perfectly healthy the whole time.
+
+    Hence: on a store destination the tracking goes URL-ENCODED INSIDE `referrer=`
+    via `_store_referrer_url` (the single implementation, shared with both Snap
+    paths), and the caller must set it on the creative's LINK rather than in
+    url_tags — see `meta.retarget_video_creative`.
+
+    Note which parameter carries the ad id here. `_utm_query` reads it from
+    rules/networks.yaml, so Meta gets `utm_content` where Snap gets `utm_id`
+    (traffic-quality.ts joins on those, per network). Crossing them is a silent
+    break on one network and harmless on the other, which is why neither is
+    hardcoded at this call site.
+    """
+    if not _is_app_store(destination):
+        return _utm_url(rules_dir, "meta", destination, campaign_name,
+                        ad_set_id, ad_id, ad_name)
+    utms = _utm_query(rules_dir, "meta", campaign_name, ad_set_id, ad_id, ad_name)
+    return _store_referrer_url(destination, utms, ra_src="ad",
+                               ra_lp=META_PLAY_DIRECT_AD_LANDING_PAGE)
+
+
+def _snap_lead_end_page(rules_dir: Path, destination: str, *, campaign_name: str,
+                        ad_squad_id: str, ad_name: str) -> str:
+    """The URL a Snap lead form's end-page button sends her to, tracked.
+
+    Two shapes, because the store and our own pages read attribution in
+    completely different places, and sending one the other's URL loses it
+    silently — which is the 2026-08-21 failure mode, not a cosmetic difference.
+
+    OUR OWN PAGES take the params on the query string: the page reads them, fires
+    its beacon, and rebuilds them into the Play referrer itself (see
+    /get/w-apply's storeUrl builder in pocket-dating-coach).
+
+    A STORE LISTING CANNOT DO ANY OF THAT. There is no beacon, no page view and
+    no code of ours running. The only channel that survives the install is Play's
+    `referrer` parameter, which the Play Store hands to the app at first launch,
+    so the params have to be URL-ENCODED INSIDE that one parameter rather than
+    appended to the listing URL. Appended, Play ignores them and every install off
+    the ad is unattributable.
+
+    What survives to `user_acquisition`, verified 2026-09-04 by reading the
+    consuming code rather than assuming: mobile/lib/attribution.dart keeps every
+    `utm_*` key plus `ra_lp` (as landingPage) and drops the rest, and the server's
+    sanitizeUtm re-applies the same `^utm_` filter. So `ra_src=form` is carried
+    for the human reading `referrer_raw` and is deliberately NOT the marker
+    anything joins on — `ra_lp` is.
+
+    `utm_id` (the ad id) is absent here for the same reason it is absent from the
+    /get/w-apply path: Snap fixes the form's end page at creation, the form
+    precedes the ad, and Snap documents no update. Attribution is at ad-squad
+    level, by platform limit — the same limit the incumbent record already
+    carries, so the two arms stay comparable.
+    """
+    utms = _utm_query(rules_dir, "snap", campaign_name, ad_squad_id, "", ad_name)
+    utms = "&".join(q for q in utms.split("&") if not q.startswith("utm_id="))
+
+    if not _is_app_store(destination):
+        return f"{destination}?{utms}&ra_src=form"
+
+    return _store_referrer_url(destination, utms, ra_src="form",
+                               ra_lp=PLAY_DIRECT_LANDING_PAGE)
+
+
 def cmd_snap_leads(args: argparse.Namespace, ledger: Ledger) -> None:
     """Manage where Snap delivers lead-form submissions.
 
@@ -442,6 +593,68 @@ def cmd_snap_leads(args: argparse.Namespace, ledger: Ledger) -> None:
         return
 
 
+def cmd_snap_audience(args: argparse.Namespace, ledger: Ledger) -> None:
+    """Create/grow a Snap Custom Audience or build a Lookalike from one — no clicking.
+
+    Added 2026-09-01 so a female-lead Lookalike didn't have to be built by hand
+    in Ads Manager again. `upsert` is additive: run it again next month with a
+    longer --file and it grows the same audience by name rather than making a
+    second one. This command still cannot attach an audience to an ad squad's
+    targeting — that stays a human action in Ads Manager, same as every other
+    live-account edit this repo refuses to automate.
+    """
+    del ledger  # unused — audiences aren't ledger objects
+    config = load_config()
+    client = snapapi.SnapClient(config.get("snap") or {})
+
+    if args.action == "list":
+        audiences = client.list_audiences()
+        if not audiences:
+            print("no audiences on this account")
+            return
+        for a in audiences:
+            size = a.get("approximate_number_of_users", a.get("num_of_users", "?"))
+            print(f"{a.get('id')}  {a.get('name')!r}  {a.get('source_type')}  users~{size}")
+        return
+
+    if args.action == "upsert":
+        if not args.name or not args.file:
+            print("error: snap-audience upsert needs --name and --file", file=sys.stderr)
+            raise SystemExit(2)
+        path = Path(args.file).expanduser()
+        if not path.exists():
+            print(f"error: {path} not found", file=sys.stderr)
+            raise SystemExit(2)
+        lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and lines[0].lower() in ("email", "emails"):
+            lines = lines[1:]
+        if not lines:
+            print(f"error: {path} has no emails after the header", file=sys.stderr)
+            raise SystemExit(2)
+        audience = client.upsert_customer_list_audience(
+            args.name, lines, description=args.description or "")
+        print(f"{audience['id']}  {args.name!r}  {len(lines)} email(s) uploaded")
+        print("Snap takes time to process matches — a new upload reads 0 users for a while,")
+        print("not an error.")
+        return
+
+    if args.action == "lookalike":
+        if not args.name or not args.seed_name:
+            print("error: snap-audience lookalike needs --name and --seed-name", file=sys.stderr)
+            raise SystemExit(2)
+        seed = client.find_audience(args.seed_name)
+        if seed is None:
+            print(f"error: no audience named {args.seed_name!r} — run 'snap-audience list' "
+                  "to see what exists", file=sys.stderr)
+            raise SystemExit(2)
+        lookalike = client.create_lookalike_audience(
+            args.name, seed_segment_id=seed["id"], country=args.country,
+            similarity=args.similarity, description=args.description or "")
+        print(f"{lookalike['id']}  {args.name!r}  seeded from {args.seed_name!r} "
+              f"({args.country}, {args.similarity})")
+        return
+
+
 def cmd_snap_push(args: argparse.Namespace, ledger: Ledger) -> None:
     config = load_config()
     rec = ledger.find(args.rec_id)
@@ -526,13 +739,16 @@ def cmd_snap_push(args: argparse.Namespace, ledger: Ledger) -> None:
         _fail(exc)
     targeting = targetingspec.to_snap(spec)
 
+    store_bound = _is_app_store(fm["destination_url"])
     plan = [
         ("campaign   ", fm["campaign_name"]),
         ("ad squad   ", (f'{fm["ad_set_name"]}  Rs {budget:.0f}/day x '
-                         f'{fm["duration_days"]}d, LANDING_PAGE_VIEW, AUTO_BID')),
+                         f'{fm["duration_days"]}d, {args.optimization_goal}, AUTO_BID')),
         ("ad         ", fm["ad_name"]),
-        ("creative   ", f'{asset.name}  headline={args.headline!r}  CTA=MORE'),
-        ("destination", fm["destination_url"]),
+        ("creative   ", f'{asset.name}  headline={args.headline!r}  CTA={args.cta}'),
+        ("destination", (f'{fm["destination_url"]}'
+                         + ("  (app store — tracking goes inside Play's referrer=)"
+                            if store_bound else ""))),
         ("targeting  ", targetingspec.describe(spec)),
     ]
     print(f"Plan for {args.rec_id} (everything created PAUSED):")
@@ -582,26 +798,32 @@ def cmd_snap_push(args: argparse.Namespace, ledger: Ledger) -> None:
     squad = client.create_adsquad(name=fm["ad_set_name"], campaign_id=campaign["id"],
                                   targeting=targeting, daily_budget_inr=budget,
                                   start_time=iso(start), end_time=iso(end),
-                                  pixel_id=(config.get("snap") or {}).get("pixel_id"))
+                                  pixel_id=(config.get("snap") or {}).get("pixel_id"),
+                                  optimization_goal=args.optimization_goal)
     print(f"ad squad  created {squad['id']}")
 
     media = client.upload_media(f'{fm["ad_name"]}_MEDIA', asset, media_type=media_type)
     print(f"media     uploaded {media['id']}")
 
     # utm_id needs the ad id, which does not exist yet; the URL is rewritten below.
-    provisional = _utm_url(ledger.root / "rules", "snap", fm["destination_url"],
-                           fm["campaign_name"], squad["id"], "", fm["ad_name"])
+    provisional = _snap_traffic_url(ledger.root / "rules", fm["destination_url"],
+                                    campaign_name=fm["campaign_name"],
+                                    ad_squad_id=squad["id"], ad_id="",
+                                    ad_name=fm["ad_name"])
     creative = client.create_creative(name=fm["ad_name"], media_id=media["id"],
                                       headline=args.headline, brand_name="Riteangle",
                                       url=provisional,
-                                      profile_id=config["snap"]["profile_id"])
+                                      profile_id=config["snap"]["profile_id"],
+                                      call_to_action=args.cta)
     print(f"creative  created {creative['id']}")
 
     ad = client.create_ad(name=fm["ad_name"], ad_squad_id=squad["id"], creative_id=creative["id"])
     print(f"ad        created {ad['id']}")
 
-    final_url = _utm_url(ledger.root / "rules", "snap", fm["destination_url"],
-                         fm["campaign_name"], squad["id"], ad["id"], fm["ad_name"])
+    final_url = _snap_traffic_url(ledger.root / "rules", fm["destination_url"],
+                                  campaign_name=fm["campaign_name"],
+                                  ad_squad_id=squad["id"], ad_id=ad["id"],
+                                  ad_name=fm["ad_name"])
     client.set_creative_url(creative, final_url)
     print("creative  landing URL rewritten with the real ad id")
 
@@ -615,12 +837,13 @@ def cmd_snap_push(args: argparse.Namespace, ledger: Ledger) -> None:
         ("ad squad status", squad_live.get("status"), "PAUSED"),
         ("ad status", ad_live.get("status"), "PAUSED"),
         ("daily budget", squad_live.get("daily_budget_micro"), int(budget * snapapi.MICRO)),
-        ("optimisation goal", squad_live.get("optimization_goal"), "LANDING_PAGE_VIEW"),
+        ("optimisation goal", squad_live.get("optimization_goal"), args.optimization_goal),
         # Derived from the record's own spec, never from a literal — a read-back
         # compared against a hardcoded dict only ever validates the code against
         # itself, which is how a wrong audience would have passed silently.
         *targetingspec.snap_readback_checks(spec, squad_live),
         ("headline", creative_live.get("headline"), args.headline),
+        ("call to action", creative_live.get("call_to_action"), args.cta),
         ("landing url", creative_live.get("web_view_properties", {}).get("url"), final_url),
     ]
     bad = 0
@@ -1035,9 +1258,21 @@ def cmd_snap_push_lead(args: argparse.Namespace, ledger: Ledger) -> None:
         ("ad squad   ", (f'{fm["ad_set_name"]}  Rs {budget:.0f}/day x '
                          f'{fm["duration_days"]}d, LEAD_FORM_SUBMISSIONS, auto bid')),
         ("ad         ", fm["ad_name"]),
-        ("form       ", f'first name + phone + email, privacy={privacy_url}'),
-        ("end page   ", (f'{fm["destination_url"]}?<squad-level utms>&ra_src=form '
-                         '(no per-lead id — Snap documents no macro)')),
+        ("form       ", (
+            f'first name + phone + email, privacy={privacy_url}, copy='
+            + repr((snapapi.FORM_COPY_STORE
+                    if _is_app_store(fm["destination_url"])
+                    else snapapi.FORM_COPY_PAGE)["title"])
+            + ', end-page CTA ' + (snapapi.END_PAGE_CTA_STORE
+                                   if _is_app_store(fm["destination_url"])
+                                   else snapapi.END_PAGE_CTA_PAGE))),
+        ("end page   ", (
+            f'{fm["destination_url"]}&referrer=<squad-level utms + ra_lp='
+            f'{PLAY_DIRECT_LANDING_PAGE}, url-encoded> (store listing: attribution '
+            'rides Play\'s install referrer, nothing else survives)'
+            if _is_app_store(fm["destination_url"]) else
+            f'{fm["destination_url"]}?<squad-level utms>&ra_src=form '
+            '(no per-lead id — Snap documents no macro)')),
         (f"{asset_media_type.lower():<11}", str(asset)),
         ("targeting  ", targetingspec.describe(spec)),
     ]
@@ -1089,10 +1324,9 @@ def cmd_snap_push_lead(args: argparse.Namespace, ledger: Ledger) -> None:
     # The end-page URL: rules/tracking.md's params as literals at squad level
     # (utm_id needs the ad id, which the form must precede), plus ra_src=form so
     # /get/w-apply admits her without a lead id.
-    utms = _utm_query(ledger.root / "rules", "snap", fm["campaign_name"],
-                      squad["id"], "", fm["ad_name"])
-    utms = "&".join(q for q in utms.split("&") if not q.startswith("utm_id="))
-    end_page = f'{fm["destination_url"]}?{utms}&ra_src=form'
+    end_page = _snap_lead_end_page(
+        ledger.root / "rules", fm["destination_url"],
+        campaign_name=fm["campaign_name"], ad_squad_id=squad["id"], ad_name=fm["ad_name"])
 
     if args.form_id:
         form = {"id": str(args.form_id)}
@@ -1120,8 +1354,14 @@ def cmd_snap_push_lead(args: argparse.Namespace, ledger: Ledger) -> None:
                       f"attribution for {fm['ad_name']} is absent, by platform limit")
     else:
         form_name = f'RA_LEAD_{fm["ad_set_name"]}_SNAP'
+        # "One step left" is only true when a step follows. On the store path
+        # nothing does, so the form says the apply is done and the app is next.
+        store = _is_app_store(fm["destination_url"])
+        form_copy = snapapi.FORM_COPY_STORE if store else snapapi.FORM_COPY_PAGE
+        form_cta = snapapi.END_PAGE_CTA_STORE if store else snapapi.END_PAGE_CTA_PAGE
         form = client.find_lead_form(form_name) or client.create_lead_form(
-            name=form_name, privacy_url=privacy_url, end_page_url=end_page)
+            name=form_name, privacy_url=privacy_url, end_page_url=end_page,
+            copy=form_copy, end_page_cta=form_cta)
         print(f"form      {form['id']}")
 
     media = client.upload_media(f'{fm["ad_name"]}_MEDIA', asset, media_type=asset_media_type)
@@ -1160,12 +1400,26 @@ def cmd_snap_push_lead(args: argparse.Namespace, ledger: Ledger) -> None:
         print(f"  {'ok ' if ok else 'DIFF'}  targeting {label}: {got!r}" + ("" if ok else f" (wanted {want!r})"))
     print(f"  end page  {end_page}")
 
+    if _is_app_store(fm["destination_url"]):
+        # The store test is NOT the page test with a different URL. Nothing of ours
+        # runs on the listing, so "it loaded" proves nothing about attribution — the
+        # referrer is only observable after an actual install, in user_acquisition.
+        step2 = ("ONE end-to-end test in the Snapchat app preview: submit the form, tap the\n"
+                 "     end-page button, confirm the Play listing for com.riteangle.app opens.\n"
+                 "     THEN INSTALL FROM IT ON A REAL ANDROID DEVICE and sign in — the referrer is\n"
+                 "     only observable after an install. Read the row back from user_acquisition\n"
+                 f"     via ads_agent_ro and confirm ad_set={squad['id']} and\n"
+                 f"     landing_page={PLAY_DIRECT_LANDING_PAGE}. A listing that merely opened is\n"
+                 "     NOT this check — a bare listing URL opens exactly the same way and\n"
+                 "     attributes nothing.")
+    else:
+        step2 = ("ONE end-to-end test in the Snapchat app preview: submit the form, tap the end-page\n"
+                 "     button, confirm /get/w-apply LOADS (does not bounce to /get/w) and the\n"
+                 "     marketing_apply_gate row lands with ra_lead null and the squad-level utm_term.")
     print(f"""
 Created PAUSED. Before enabling:
   1. ad-agent log-setup {args.rec_id} --network snap --campaign-id {campaign['id']} --ad-set-id {squad['id']} --ad-id {ad['id']}
-  2. ONE end-to-end test in the Snapchat app preview: submit the form, tap the end-page
-     button, confirm /get/w-apply LOADS (does not bounce to /get/w) and the
-     marketing_apply_gate row lands with ra_lead null and the squad-level utm_term.
+  2. {step2}
   3. Delete the test lead afterwards. Enabling is a human click in Ads Manager.""")
 
 
@@ -1453,15 +1707,66 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
         print(f"error: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
 
-    asset = ledger.root / fm["creative_ref"] / "asset-a.jpg"
-    qa = ledger.root / fm["creative_ref"] / "qa.md"
-    if not asset.exists():
-        print(f"error: creative not found at {asset}", file=sys.stderr)
-        raise SystemExit(2)
+    # ---- which media, and where it comes from -----------------------------
+    # Three routes, added 2026-09-06 (before that this command could only build a
+    # still image from creative_ref/asset-a.jpg):
+    #
+    #   --video-id + --thumb-hash  reuse an asset ALREADY in this account's Meta
+    #                              library. The point of this route is that the
+    #                              viewer sees a byte-identical video to one the
+    #                              app owner already approved and Meta already
+    #                              reviewed — no re-upload, no re-encode. Meta
+    #                              binds a creative's CTA at creation, so a new
+    #                              creative OBJECT is still required; only the
+    #                              media is shared.
+    #   creative_ref/asset-a.mp4   upload the video, thumbnail expected beside it
+    #                              as asset-a.thumb.jpg (Meta rejects a video
+    #                              creative with no thumbnail).
+    #   creative_ref/asset-a.jpg   the original still-image route, unchanged.
+    #
+    # The QA gate does NOT move: it is keyed on creative_ref/qa.md whichever route
+    # supplies the pixels, because the gate signs off on the ASSET, and reusing a
+    # library id must not become a way around it.
+    cdir = ledger.root / fm["creative_ref"]
+    qa = cdir / "qa.md"
     if not qa.exists() or "`pass`" not in qa.read_text(encoding="utf-8"):
         print(f"error: no recorded QA pass in {qa} — see rules/creative-generation.md sec 10",
               file=sys.stderr)
         raise SystemExit(2)
+
+    asset = None            # local file to upload, if any
+    media_type = "IMAGE"
+    if args.video_id:
+        if not args.thumb_hash:
+            print("error: --video-id needs --thumb-hash too. Meta rejects a video creative\n"
+                  "with no thumbnail, and a reused video has no local frame to extract one\n"
+                  "from. Read it off the existing creative:\n"
+                  "  object_story_spec.video_data.image_hash", file=sys.stderr)
+            raise SystemExit(2)
+        media_type = "VIDEO"
+    elif (cdir / "asset-a.mp4").exists():
+        asset, media_type = cdir / "asset-a.mp4", "VIDEO"
+        if not (cdir / "asset-a.thumb.jpg").exists():
+            print(f"error: {cdir}/asset-a.mp4 is a video, so Meta needs a thumbnail beside\n"
+                  f"it at {cdir}/asset-a.thumb.jpg — export one frame. Or reuse an already\n"
+                  "uploaded asset with --video-id/--thumb-hash.", file=sys.stderr)
+            raise SystemExit(2)
+    elif (cdir / "asset-a.jpg").exists():
+        asset, media_type = cdir / "asset-a.jpg", "IMAGE"
+    else:
+        print(f"error: no creative at {cdir}/asset-a.mp4 or {cdir}/asset-a.jpg, and no\n"
+              "--video-id given to reuse one from Meta's library", file=sys.stderr)
+        raise SystemExit(2)
+
+    # ---- what the ad set should optimise for ------------------------------
+    # Derived from the destination, not passed in, because getting it wrong is
+    # silent. LANDING_PAGE_VIEWS asks Meta to optimise toward a page of ours
+    # loading; on a Play listing no page of ours loads, ever, so the goal names an
+    # event that cannot occur. LINK_CLICKS optimises for the tap, which is
+    # observably counted. Same correction the Snap arm made 2026-09-05
+    # (LANDING_PAGE_VIEW -> SWIPES) for the same reason.
+    store_bound = _is_app_store(fm["destination_url"])
+    optimization_goal = "LINK_CLICKS" if store_bound else "LANDING_PAGE_VIEWS"
 
     start = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
     end = start + _dt.timedelta(days=int(fm["duration_days"]))
@@ -1487,18 +1792,34 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
         _fail(exc)
     targeting = targetingspec.to_meta(spec)
 
+    media_desc = (f'reusing Meta library video {args.video_id} '
+                  f'(thumb {args.thumb_hash})' if args.video_id else asset.name)
     plan = [
         ("campaign   ", f'{fm["campaign_name"]}  OUTCOME_TRAFFIC'),
         ("ad set     ", (f'{fm["ad_set_name"]}  Rs {budget:.0f}/day x '
-                         f'{fm["duration_days"]}d, LANDING_PAGE_VIEWS, lowest cost')),
+                         f'{fm["duration_days"]}d, {optimization_goal}, lowest cost')),
         ("ad         ", fm["ad_name"]),
-        ("creative   ", f'{asset.name}  headline={args.headline!r}  CTA={args.cta}'),
+        ("creative   ", (f'{media_type}  {media_desc}  '
+                         f'headline={args.headline!r}  CTA={args.cta}')),
         ("destination", fm["destination_url"]),
         ("targeting  ", targetingspec.describe(spec)),
     ]
     print(f"Plan for {args.rec_id} (everything created PAUSED):")
     for k, v in plan:
         print(f"  {k}  {v}")
+    # Said out loud in the plan for the same reason the regulated_content note
+    # below is: a reader who is not told will assume the account's pixel covers
+    # this ad, because it covers every other ad here.
+    if store_bound:
+        print("  tracking     store destination: tracking goes URL-ENCODED INSIDE Play's\n"
+              "               referrer=, NOT in url_tags (Play strips appended params).\n"
+              f"               ra_lp={META_PLAY_DIRECT_AD_LANDING_PAGE}, ra_src=ad")
+        print("  NO PIXEL     the account pixel cannot fire on a Play listing — no page of\n"
+              "               ours renders. marketing-conversions.ts's Meta CAPI forward is\n"
+              "               driven by the landing page's store-click beacon, so this route\n"
+              "               bypasses it too. Meta gets NO conversion signal from this ad:\n"
+              "               LINK_CLICKS buys the cheapest tap, not the likeliest installer.\n"
+              "               See rules/tracking.md, Meta direct-to-store coverage table.")
     # Said out loud in the plan, because it is the one field of the spec that does
     # not survive the crossing and a silent drop is how a reader comes to believe a
     # declaration was made that was not.
@@ -1562,19 +1883,51 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
         adset = client.create_adset(name=fm["ad_set_name"], campaign_id=campaign["id"],
                                     targeting=targeting, daily_budget_inr=budget,
                                     start_time=iso(start), end_time=iso(end),
-                                    pixel_id=(config.get("meta") or {}).get("pixel_id"))
+                                    pixel_id=(config.get("meta") or {}).get("pixel_id"),
+                                    optimization_goal=optimization_goal)
         print(f"ad set    created {adset['id']}")
 
-    image_hash = client.upload_image(asset)
-    print(f"image     uploaded hash={image_hash}")
+    if media_type == "VIDEO":
+        if args.video_id:
+            video_id, thumb_hash = str(args.video_id), args.thumb_hash
+            print(f"video     reusing library id={video_id} thumb={thumb_hash} "
+                  "(no re-upload — same bytes the owner approved)")
+        else:
+            print("video     uploading (Meta processes before it is usable; up to ~5 min) ...")
+            video_id = client.upload_video(asset)
+            thumb_hash = client.upload_image(asset.with_name("asset-a.thumb.jpg"))
+            print(f"video     ready id={video_id} thumb={thumb_hash}")
+        image_hash = None
+    else:
+        image_hash = client.upload_image(asset)
+        video_id = thumb_hash = None
+        print(f"image     uploaded hash={image_hash}")
 
-    # The creative's link carries the destination and the params that are known now.
-    # utm_content has to carry the AD id on Meta (per traffic-quality.ts) and the ad
-    # does not exist yet, so the id goes on afterwards via the ad's url_tags.
-    creative = client.create_creative(
-        name=f'{fm["ad_name"]}_CREATIVE', image_hash=image_hash,
-        headline=args.headline, message=args.message,
-        url=fm["destination_url"], call_to_action=args.cta)
+    # The provisional creative carries the destination and the params that are known
+    # now. On Meta the AD id is what the analytics joins on (utm_content, per
+    # traffic-quality.ts) and the ad does not exist yet — so the id is written in
+    # afterwards, by a second creative the ad is repointed at. Which FIELD it lands
+    # in depends on the destination, and this is the part that is easy to get wrong:
+    #
+    #   a page of ours -> the ad's url_tags, which Meta appends to the query string
+    #                     and the page reads.
+    #   a store listing -> the creative's own LINK, with the tracking URL-encoded
+    #                     inside Play's referrer=. url_tags is INERT here; Play
+    #                     discards appended params, and the ad would look healthy
+    #                     the entire time it produced unattributable installs.
+    # The provisional link is the bare destination either way: the only thing
+    # missing from it is the ad id, and that is what the repoint below adds.
+    provisional_url = fm["destination_url"]
+    if media_type == "VIDEO":
+        creative = client.create_link_video_creative(
+            name=f'{fm["ad_name"]}_CREATIVE', video_id=video_id,
+            thumbnail_hash=thumb_hash, headline=args.headline, message=args.message,
+            url=provisional_url, call_to_action=args.cta)
+    else:
+        creative = client.create_creative(
+            name=f'{fm["ad_name"]}_CREATIVE', image_hash=image_hash,
+            headline=args.headline, message=args.message,
+            url=provisional_url, call_to_action=args.cta)
     print(f"creative  created {creative['id']}")
 
     ad = client.find_ad(fm["ad_name"], adset["id"])
@@ -1592,12 +1945,24 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
     # See MetaClient.attach_tracked_creative for what was tried and what persists.
     url_tags = _utm_query(ledger.root / "rules", "meta", fm["campaign_name"],
                           adset["id"], ad["id"], fm["ad_name"])
-    creative = client.attach_tracked_creative(
-        ad_id=ad["id"], creative=client.get(
-            f"/{creative['id']}", fields="id,object_story_spec"),
-        url_tags=url_tags, name=f'{fm["ad_name"]}_CREATIVE_TRACKED')
-    print(f"creative  {creative['id']} attached, url_tags carry the real ad id "
-          f"(no {{{{macro}}}} to not resolve)")
+    tracked_link = _meta_traffic_url(
+        ledger.root / "rules", fm["destination_url"], campaign_name=fm["campaign_name"],
+        ad_set_id=adset["id"], ad_id=ad["id"], ad_name=fm["ad_name"])
+    if store_bound:
+        creative = client.retarget_video_creative(
+            ad_id=ad["id"], creative=client.get(
+                f"/{creative['id']}", fields="id,object_story_spec"),
+            link=tracked_link, name=f'{fm["ad_name"]}_CREATIVE_TRACKED')
+        print(f"creative  {creative['id']} attached, its CTA link carries the real ad id\n"
+              f"          inside Play's referrer= (no {{{{macro}}}} to not resolve, and no\n"
+              f"          url_tags, which Play would discard)")
+    else:
+        creative = client.attach_tracked_creative(
+            ad_id=ad["id"], creative=client.get(
+                f"/{creative['id']}", fields="id,object_story_spec"),
+            url_tags=url_tags, name=f'{fm["ad_name"]}_CREATIVE_TRACKED')
+        print(f"creative  {creative['id']} attached, url_tags carry the real ad id "
+              f"(no {{{{macro}}}} to not resolve)")
 
     # ---- read back, and diff against what was asked for ----
     print("\nRead-back:")
@@ -1610,7 +1975,9 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
     creative_live = client.get(
         f"/{creative['id']}",
         fields="id,name,url_tags,object_story_spec,degrees_of_freedom_spec")
-    link_data = ((creative_live.get("object_story_spec") or {}).get("link_data") or {})
+    story = creative_live.get("object_story_spec") or {}
+    link_data = story.get("link_data") or {}
+    video_data = story.get("video_data") or {}
 
     checks = [
         ("ad set status", adset_live.get("status"), "PAUSED"),
@@ -1619,17 +1986,34 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
         # mistake shows up here as a diff rather than as a plausible-looking number.
         ("daily budget (paise)", adset_live.get("daily_budget"),
          round(budget * metaapi.MINOR)),
-        ("optimisation goal", adset_live.get("optimization_goal"), "LANDING_PAGE_VIEWS"),
+        ("optimisation goal", adset_live.get("optimization_goal"), optimization_goal),
         # Derived from the record's own spec, never from a literal — a read-back
         # compared against a hardcoded dict only ever validates the code against
         # itself, which is how a wrong audience would pass silently.
         *targetingspec.meta_readback_checks(spec, adset_live),
-        ("headline", link_data.get("name"), args.headline),
-        ("landing url", link_data.get("link"), fm["destination_url"]),
-        ("url_tags", creative_live.get("url_tags"), url_tags),
-        ("ad points at creative", (ad_live.get("creative") or {}).get("id"),
-         creative["id"]),
     ]
+    if media_type == "VIDEO":
+        cta_link = ((video_data.get("call_to_action") or {}).get("value") or {}).get("link")
+        checks += [
+            ("headline", video_data.get("title"), args.headline),
+            ("video id", video_data.get("video_id"),
+             str(args.video_id) if args.video_id else video_id),
+            ("thumbnail hash", video_data.get("image_hash"), thumb_hash),
+            ("CTA link", cta_link, tracked_link),
+        ]
+    else:
+        checks += [
+            ("headline", link_data.get("name"), args.headline),
+            ("landing url", link_data.get("link"),
+             tracked_link if store_bound else fm["destination_url"]),
+        ]
+    if not store_bound:
+        # url_tags is only the tracking channel for a page of ours. On a store
+        # destination it is deliberately unset, so asserting it would fail on the
+        # correct behaviour.
+        checks.append(("url_tags", creative_live.get("url_tags"), url_tags))
+    checks.append(("ad points at creative", (ad_live.get("creative") or {}).get("id"),
+                   creative["id"]))
     bad = 0
     for label, got, want in checks:
         ok = str(got) == str(want)
@@ -1637,6 +2021,38 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
         print(f"  {'ok ' if ok else 'DIFF'}  {label:22} {got}")
         if not ok:
             print(f"        {'':22} expected: {want}")
+
+    # ---- the store-URL shape check, on the URL Meta actually stored ------
+    # Not a comparison against our own string — that only proves the code agrees
+    # with itself. This DECODES what came back and asserts the two properties that
+    # were silently wrong on 2026-09-05: that Play will read the app id as the bare
+    # package name (a stray second `?` made it `com.riteangle.app?utm_source=...`,
+    # which would not have opened the right listing at all), and that the ad id is
+    # inside the referrer rather than appended beside it where Play throws it away.
+    if store_bound:
+        stored = (((video_data.get("call_to_action") or {}).get("value") or {}).get("link")
+                  if media_type == "VIDEO" else link_data.get("link"))
+        q = parse_qs(urlsplit(stored or "").query)
+        app_id = (q.get("id") or [""])[0]
+        referrer = unquote((q.get("referrer") or [""])[0])
+        ref = parse_qs(referrer)
+        print("\nStore URL, as Meta stored it:")
+        print(f"  {'ok ' if app_id == 'com.riteangle.app' else 'DIFF'}  "
+              f"{'app id':22} {app_id!r}")
+        if app_id != "com.riteangle.app":
+            bad += 1
+            print(f"        {'':22} expected: 'com.riteangle.app' — a corrupted app id "
+                  "means the link may not open the right listing")
+        for key, want in (("utm_content", ad["id"]), ("utm_term", adset["id"]),
+                          ("utm_source", "fb"),
+                          ("ra_lp", META_PLAY_DIRECT_AD_LANDING_PAGE)):
+            got = (ref.get(key) or [""])[0]
+            ok = got == str(want)
+            bad += not ok
+            print(f"  {'ok ' if ok else 'DIFF'}  {'referrer ' + key:22} {got!r}")
+            if not ok:
+                print(f"        {'':22} expected: {want!r}")
+        print(f"  full link: {stored}")
 
     # Meta's per-feature creative enhancements, reported rather than assumed. The
     # single standard_enhancements opt-out was deprecated on 2026-08-28 and its
@@ -1675,6 +2091,170 @@ def cmd_meta_push(args: argparse.Namespace, ledger: Ledger) -> None:
           f"    --campaign-id {campaign['id']} \\\n"
           f"    --ad-set-id {adset['id']} \\\n"
           f"    --ad-id {ad['id']}")
+
+
+def _pg_env(db_url: str) -> dict:
+    """Split a postgres URL into PG* environment variables.
+
+    Deliberately not passed to psql as an argv connection string: that puts the
+    password in the process list for anything on the machine to read. PG* env
+    vars are inherited by the child and never appear in `ps`.
+    """
+    import os
+    from urllib.parse import unquote
+
+    parts = urlsplit(db_url)
+    if parts.scheme not in ("postgres", "postgresql"):
+        raise ValueError(f"not a postgres URL: scheme {parts.scheme!r}")
+    env = dict(os.environ)
+    env.update({
+        "PGHOST": parts.hostname or "",
+        "PGPORT": str(parts.port or 5432),
+        "PGUSER": unquote(parts.username or ""),
+        "PGPASSWORD": unquote(parts.password or ""),
+        "PGDATABASE": (parts.path or "/postgres").lstrip("/") or "postgres",
+        # Supabase's pooler terminates TLS; without this psql may negotiate down.
+        "PGSSLMODE": "require",
+    })
+    return env
+
+
+#: What `user_acquisition` actually records, named here so no caller can quietly
+#: believe otherwise. The row is written by pocket-dating-coach's
+#: /api/attribution/install, which REQUIRES a Bearer session and keys the row on
+#: user_id — so it cannot exist before sign-up completes. It is therefore a count
+#: of SIGN-UPS carrying a campaign, not of installs and not of first opens.
+#: Verified 2026-09-05 by reading mobile/lib/attribution.dart (returns early when
+#: `Supabase.instance.client.auth.currentSession == null`) and that endpoint.
+ACQUISITION_ROW_MEANS = "sign-ups (NOT installs, NOT first opens)"
+
+
+def cmd_verify_tracking(args: argparse.Namespace, ledger: Ledger) -> None:
+    """Run rules/tracking.md's post-launch check against live data.
+
+    Exists because that check has been mandatory since the 2026-08-21 incident
+    (54 Snap installs, zero attributable, a full week of spend) and until
+    2026-09-05 nothing automated it — it depended on someone remembering to open
+    a SQL client. `pdc.readonly_db_url` had been in the config schema that whole
+    time with no code reading it. A mandated check that relies on memory is the
+    same class of failure as the incident it was written for.
+
+    THE THREE-WAY OUTCOME IS THE POINT. Zero rows is ambiguous — it means either
+    "tracking is broken" or "nobody has signed up yet", and reporting the second
+    as a failure trains people to ignore the check while reporting it as a pass
+    is exactly the lie the incident was made of. So this never prints a bare
+    PASS/FAIL:
+
+      * observed   - rows exist carrying THIS ad's id. Tracking is proven.
+      * suspicious - other rows landed in the window but none from this ad.
+      * inconclusive - no rows at all in the window. Nothing is proven either way.
+
+    **WHICH PARAMETER HOLDS THE AD ID IS PER-NETWORK, and this function got it
+    wrong until 2026-09-07.** It hardcoded `utm_id`, which is Snap's join key.
+    Meta puts the ad id in `utm_content` (rules/networks.yaml, traffic-quality.ts),
+    so run against a Meta record this check looked in a column that could never
+    hold the value — it would have reported 0 for this ad forever, no matter how
+    perfect the tracking was, and reported `suspicious` the moment any unrelated
+    row landed in the window. Found by running it against
+    rec-2026-09-06-moveon-play-w1830-meta, the first Meta record it was ever
+    pointed at. The param now comes from the registry, like every other place
+    that needs it — see `_utm_query`, which had this right from the start.
+    """
+    rec = ledger.find(args.rec_id)
+    fm = rec.front_matter
+    ad_id = fm.get("ad_id")
+    ad_set_id = fm.get("ad_set_id")
+    if not ad_id:
+        print(f"error: {args.rec_id} has no ad_id — run log-setup first, or the ad\n"
+              "was never created. There is nothing to look for.", file=sys.stderr)
+        raise SystemExit(2)
+
+    db_url = (load_config().get("pdc") or {}).get("readonly_db_url")
+    if not db_url:
+        print("error: pdc.readonly_db_url is not set in config.local.yaml.",
+              file=sys.stderr)
+        raise SystemExit(2)
+
+    import shutil
+    import subprocess
+    if not shutil.which("psql"):
+        print("error: psql not found on PATH. This command shells out to psql rather\n"
+              "than adding a postgres driver to a package whose only dependency is\n"
+              "pyyaml. Install libpq (brew install libpq) or query by hand.",
+              file=sys.stderr)
+        raise SystemExit(2)
+
+    since = args.since or fm.get("executed") or fm.get("created")
+    # Snap joins the ad on utm_id, Meta on utm_content. Read it from the registry
+    # rather than writing either literal here — this function hardcoded Snap's and
+    # was silently unable to verify a Meta ad at all until 2026-09-07.
+    join_param = networkreg.get(ledger.root / "rules",
+                                fm.get("network") or "snap")["ad_join_param"]
+    sql = f"""
+    select
+      coalesce(sum(case when utm->>'{join_param}' = '{ad_id}' then 1 else 0 end), 0) as this_ad,
+      coalesce(sum(case when utm->>'{join_param}' is distinct from '{ad_id}' then 1 else 0 end), 0) as other,
+      count(*) as total
+    from user_acquisition
+    where created_at >= '{since}'::date;
+    """
+    detail = f"""
+    select created_at, network, campaign, ad_set, landing_page, platform,
+           utm->>'{join_param}' as ad_id
+    from user_acquisition
+    where created_at >= '{since}'::date
+    order by created_at desc limit 20;
+    """
+    try:
+        env = _pg_env(db_url)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
+
+    def run(query: str) -> str:
+        out = subprocess.run(["psql", "-At", "-F", "|", "-c", query],
+                             env=env, capture_output=True, text=True,
+                             timeout=60, check=False)
+        if out.returncode != 0:
+            print(f"psql failed:\n{out.stderr.strip()[:600]}", file=sys.stderr)
+            raise SystemExit(1)
+        return out.stdout.strip()
+
+    counts = run(sql).split("|")
+    this_ad, other, total = (int(x) for x in counts)
+
+    print(f"Post-launch tracking check — {args.rec_id}")
+    print(f"  ad id        {ad_id}")
+    print(f"  ad set id    {ad_set_id}")
+    print(f"  window       rows created on/after {since}")
+    print(f"  measuring    {ACQUISITION_ROW_MEANS}")
+    print()
+    print(f"  rows carrying this ad's {join_param:<10} : {this_ad}")
+    print(f"  rows from anything else        : {other}")
+    print(f"  rows in window, total          : {total}")
+    print()
+
+    if this_ad > 0:
+        print(f"OBSERVED — this ad's {join_param} reached user_acquisition. The")
+        print("referrer chain is proven for this funnel shape, not merely expected.")
+    elif total > 0:
+        print("SUSPICIOUS — rows landed in this window but none carry this ad's")
+        print(f"{join_param}. Either nobody from this ad has signed up yet, or the")
+        print("referrer is being dropped. Check the rows below for the landing")
+        print("page's hardcoded default (utm_campaign=get_lp with nothing else),")
+        print("which is what the 2026-08-21 incident looked like.")
+    else:
+        print("INCONCLUSIVE — no rows at all in this window, so nothing is proven")
+        print("either way. This is the expected state for a fresh ad: a row needs a")
+        print("completed SIGN-UP, which is several steps past the install. Re-run")
+        print("this once the ad has produced real signups.")
+
+    if total > 0 or args.detail:
+        print("\nRecent rows:")
+        rows = run(detail)
+        print(f"  created_at|network|campaign|ad_set|landing_page|platform|{join_param}")
+        for line in (rows.splitlines() or ["  (none)"]):
+            print(f"  {line}")
 
 
 def cmd_log_setup(args: argparse.Namespace, ledger: Ledger) -> None:
@@ -2375,7 +2955,11 @@ def build_parser() -> argparse.ArgumentParser:
              "2026-08-28). Reads below the Rs 800-1,200 full-experiment threshold are "
              "directional — propose says so on the record; raise the cap for a test "
              "whose answer must be trusted")
-    sp.add_argument("--duration-days", required=True, type=int)
+    sp.add_argument(
+        "--duration-days", type=int, default=budgetrules.DEFAULT_DURATION_DAYS,
+        help="days the ad set runs (default: rules/budget.md's operating default, 2 as "
+             "of 2026-09-05). The push commands stamp the start at CREATION, not at "
+             "enabling, so a day's delay before you enable costs half a 2-day test")
     sp.add_argument("--brief", required=True, help="path to a markdown brief file")
     sp.add_argument("--from-idea", default=None,
                     help="idea id this came from; marks that idea proposed so it stops "
@@ -2399,12 +2983,47 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_snap_leads)
 
     sp = sub.add_parser(
+        "snap-audience",
+        help="Create/grow a Snap Custom Audience or build a Lookalike from one",
+    )
+    sp.add_argument("action", choices=["list", "upsert", "lookalike"],
+                    help="list: every audience on the account. "
+                         "upsert: create-or-grow a Customer List from an email file. "
+                         "lookalike: build a Lookalike seeded from an existing audience")
+    sp.add_argument("--name", help="audience name, required by upsert and lookalike")
+    sp.add_argument("--file", help="path to a text/csv file, one email per line "
+                                   "(an 'Email' header line is skipped), required by upsert")
+    sp.add_argument("--description", help="optional, shown in Ads Manager")
+    sp.add_argument("--seed-name", help="existing audience name to build the lookalike "
+                                        "from, required by lookalike")
+    sp.add_argument("--country", default="IN", help="lookalike country, default IN")
+    sp.add_argument("--similarity", default="SIMILARITY",
+                    choices=["REACH", "BALANCE", "SIMILARITY"],
+                    help="Snap's lookalike breadth tier, narrowest to broadest reversed "
+                         "(SIMILARITY=narrowest, REACH=broadest); default SIMILARITY")
+    sp.set_defaults(func=cmd_snap_audience)
+
+    sp = sub.add_parser(
         "snap-push",
         help="Create a proposed recommendation in Snap Ads Manager, PAUSED, then diff it back",
     )
     sp.add_argument("rec_id")
     sp.add_argument("--headline", default="A shortlist that means something.",
                     help="Snap headline, 34 chars max")
+    sp.add_argument("--cta", default="APPLY_NOW",
+                    help="Snap CTA-button label on the swipe-up chip (e.g. APPLY_NOW, MORE, "
+                         "SIGN_UP, LEARN_MORE, INSTALL_NOW); default APPLY_NOW, matching "
+                         "snap-push-story. Until 2026-09-05 this was hardcoded MORE with no "
+                         "way to set it, which is not the same enum as a lead form's end-page "
+                         "call_to_action — see snap.py's LEAD_END_PAGE_CTA note before "
+                         "copying a value between the two")
+    sp.add_argument("--optimization-goal", default="LANDING_PAGE_VIEW",
+                    help="ad squad optimisation goal; default LANDING_PAGE_VIEW, which is "
+                         "right when the destination is a page of ours. For a store-bound "
+                         "traffic ad there is no page of ours to view, so pass SWIPES — it "
+                         "optimises for the tap, which is measurable, instead of for a page "
+                         "render this account has never been confirmed to count off a store "
+                         "listing")
     sp.add_argument("--dry-run", action="store_true",
                     help="print the plan and create nothing")
     sp.add_argument("--accept-campaign-cap", action="store_true",
@@ -2443,7 +3062,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--message", default="",
                     help="primary text above the image; required by Meta for a link ad")
     sp.add_argument("--cta", default="LEARN_MORE",
-                    help="call-to-action button type, e.g. LEARN_MORE, SIGN_UP, DOWNLOAD")
+                    help="call-to-action button type, e.g. LEARN_MORE, SIGN_UP, DOWNLOAD, "
+                         "INSTALL_NOW")
+    sp.add_argument("--video-id", default=None,
+                    help="reuse a video ALREADY in this ad account's Meta library instead "
+                         "of uploading one — read it off an existing creative's "
+                         "object_story_spec.video_data.video_id. Needs --thumb-hash too. "
+                         "The QA gate still applies: creative_ref/qa.md must record a pass")
+    sp.add_argument("--thumb-hash", default=None,
+                    help="image_hash of the thumbnail for --video-id (Meta rejects a video "
+                         "creative without one); read it off the same video_data block")
     sp.add_argument("--dry-run", action="store_true",
                     help="print the plan and create nothing")
     sp.add_argument("--accept-campaign-cap", action="store_true",
@@ -2511,6 +3139,18 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--duration-days", default=None, type=int)
     _add_targeting_flags(sp, required=False)
     sp.set_defaults(func=cmd_amend)
+
+    sp = sub.add_parser(
+        "verify-tracking",
+        help="Run rules/tracking.md's post-launch check against live user_acquisition "
+             "data for a live recommendation",
+    )
+    sp.add_argument("rec_id")
+    sp.add_argument("--since", default=None,
+                    help="YYYY-MM-DD; defaults to the record's executed date, else created")
+    sp.add_argument("--detail", action="store_true",
+                    help="print recent rows even when the window is empty")
+    sp.set_defaults(func=cmd_verify_tracking)
 
     sp = sub.add_parser("log-setup", help="Record the real IDs after setting the ad up by hand")
     sp.add_argument("rec_id")

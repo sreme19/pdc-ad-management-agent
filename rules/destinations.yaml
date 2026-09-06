@@ -131,3 +131,53 @@ destinations:
       src/routes/get/+page.svelte:19 in pocket-dating-coach. Implemented as
       /beta/[token] — invite-token-gated, so it cannot serve paid traffic even
       though its audience matches. Not a substitute for a public women's page.
+
+  play.google.com/store/apps/details:
+    audience: neutral
+    paid_traffic: true
+    verified: 2026-09-04
+    note: >-
+      The Play listing itself — the app store page, not a page of ours. Registered
+      2026-09-04 for the direct-to-store Snap lead funnel
+      (moveon-lead-play-w1830-snap), whose form end page hands her to the store
+      instead of to /get/w-apply.
+      NOTE THE KEY SHAPE: this is the first entry keyed on HOST plus path, because
+      `/store/apps/details` alone is also the App Store's path shape and anyone
+      else's. destinations.normalize_path keys our own hosts on the path and
+      everything else on host/path, so registering this opened exactly one listing
+      and not a URL pattern.
+      AUDIENCE IS NEUTRAL, and the listing was read on 2026-09-04 to say so: "people
+      who are serious about finding genuine connections", "compatible singles" —
+      second person is the reader whatever their gender, and there is no line
+      addressed to a man about her. That is the property the gate tests, and it is
+      the reason a women's ad set may point here at all.
+      Rated 18+ on the listing, consistent with compliance.md 6.3, and its
+      verification claim ("every user goes through identity verification") is the
+      approved wording from compliance.md #4 rather than an earnings claim.
+      THE STORE CANNOT BE INSTRUMENTED THE WAY OUR OWN PAGES CAN. There is no page
+      view, no beacon and no marketing_page_views row from a store arrival — the
+      only signal that survives is Play's install referrer, so an ad pointing here
+      MUST build that referrer itself (cli._end_page_url does). An ad that sends a
+      bare listing URL here produces installs nothing can attribute, which is the
+      2026-08-21 incident with a different first step.
+      OPENED TO META TRAFFIC 2026-09-06 for rec-2026-09-06-moveon-play-w1830-meta,
+      and re-read on that date rather than merely re-dated: the listing is
+      unchanged in audience (still second person to the reader whatever their
+      gender) and still rated 18+. Confirmed by loading it in a browser — title
+      "riteangle: Pehle Tum, Phir Koi", Rated for 18+, Install available.
+      TWO THINGS THE META ARM ADDED, both in rules/tracking.md rather than here.
+      (1) The ad may point at the localised storefront
+      (…?id=com.riteangle.app&gl=IN&hl=en_IN) and it is the SAME registry entry:
+      normalize_path keys on host and path, so query parameters never reach the
+      key. (2) On Meta the tracking must go in the creative's own LINK, inside
+      referrer= — NOT in url_tags, which Meta appends and Play discards, silently.
+      Its ra_lp is meta_ad_direct, a third label distinct from snap_lead_form and
+      snap_ad_direct.
+      AND THE HARD LIMIT, WORTH READING BEFORE PROPOSING ANOTHER AD HERE: no pixel
+      of ours can fire on this destination on any network, and Meta's
+      app-promotion objective is unavailable to this account
+      (lrn-2026-09-06-meta-app-promotion-blocked-no-play-url). Every ad pointed
+      here therefore optimises toward a TAP, not an install. The Snap arm that ran
+      this shape first produced zero installs, and that is the leading explanation.
+      See q-2026-09-06-can-meta-optimise-toward-installers-not-tappers before
+      committing more direct-to-store budget.

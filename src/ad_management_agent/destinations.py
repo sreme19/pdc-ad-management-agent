@@ -54,13 +54,35 @@ def audience_of_ad_set_name(ad_set_name: str) -> str | None:
     return None
 
 
+#: Hosts whose pages are ours, and which therefore register under a bare path.
+#: Anything else registers under `host/path`, see normalize_path.
+OWN_HOSTS = ("riteangle.dating",)
+
+
 def normalize_path(destination_url: str) -> str:
-    """Reduce a destination URL to the registry key: its path, no query, no trailing slash."""
+    """Reduce a destination URL to its registry key.
+
+    Our own pages key on the path alone (`/get/w-apply`) — that is how the
+    registry has always been written and every existing entry keeps working.
+
+    AN OFF-SITE DESTINATION KEYS ON `host/path` INSTEAD, and that distinction is
+    load-bearing rather than tidy. Added 2026-09-04 for the Play listing, when a
+    Snap lead form's end page became the store rather than a page of ours. Keyed
+    on the path alone, the Play listing would have registered as
+    `/store/apps/details` — which is App Store's path shape too, and any other
+    site's, so the gate would have been opened for a whole class of URLs nobody
+    read. The gate exists because an unread page is how women's traffic reached a
+    men's page; a key that cannot name the host cannot say which page was read.
+    """
     parts = urlsplit(destination_url.strip())
     path = parts.path or "/"
     # A token-gated route like /beta/<token> registers under its parent, /beta.
     if len(path) > 1:
         path = "/" + path.strip("/")
+
+    host = (parts.hostname or "").lower().removeprefix("www.")
+    if host and not any(host == own or host.endswith("." + own) for own in OWN_HOSTS):
+        return f"{host}{path}"
     return path
 
 

@@ -58,6 +58,15 @@ ad. Slugs are uppercase, hyphenated, no underscores (the ad name is underscore-d
   `lrn-2026-08-27-hinglish-is-shaadis-hook-mechanic`. Carries an unresolved risk: no comment-moderation
   policy exists for the hostility a breakup hook attracts — surface it again before anything is
   enabled.)*
+- **`KNOW-YOUR-WORTH`** — the self-worth clapback: every label she's been handed ("too sensitive",
+  "high-maintenance", "gaon ki ladki") flipped sarcastically into a statement of her value, refrain
+  "Tumse na ho paayega." Worth is RECOGNIZED, never provided — the currency is standards, self-respect,
+  freedom, ambition; never money (compliance rule #1 rebased this thread from a "you can't afford me"
+  draft, see `creatives/girlboss-moodboard-w1830/text-treatment.md`). Distinct from MOVE-ON-PROPER (the
+  exit moment) and BUILD-YOURSELF-FIRST: this is the identity moment — who she is, not what she left.
+  *(Added 2026-09-01 — derived in a live session with Sree from a girlboss mood board; first asset is
+  the "Tumse Na Ho Paayega" 28s video, `creatives/girlboss-moodboard-w1830/`. Same unresolved
+  comment-moderation risk as MOVE-ON-PROPER: a sarcastic clapback hook invites hostile replies.)*
 - **`BUILD-YOURSELF-FIRST`** — the MOVE-ON-PROPER "how" argument sharpened to one line: you can't
   change him, you can build yourself. Four women, four bad experiences, one shared turn, then six
   beats of self-development. Deliberately not "this happened because you weren't focused on
@@ -118,6 +127,23 @@ ordered shortlist) — they read beautifully as a still and are hard to convey i
 motion without deliberately staging them. Plan for **purpose-built, scripted conversation assets**, not
 generic lifestyle stock footage, with the emotional beat landing in the first two seconds. Build around
 the emotional threads above.
+
+## Turn a continuity break into an intended transformation
+
+When a multi-scene cut can't hold one variable perfectly across every frame, don't fight it — **make
+the change the story**. On the "Tumse Na Ho Paayega" cut (2026-08-30), two unavoidable breaks became
+the arc:
+
+- **Hair arc** — dark hair in the origin scenes, caramel in the travel/payoff scenes. Read as a
+  glow-up, not a continuity error. Once it's deliberate, lock which scenes sit on each side of the turn.
+- **Geography arc** — Indian-origin scenes → international-travel payoff, sold as *her* adventure (she's
+  out in the world), never *someone took her there*. This keeps the "bigger life" promise clear of
+  `compliance.md` rule #1: travel is her own journey, not being kept. Foreign tourists in the background
+  sell "out in the world" without a provider cue.
+
+The rule of thumb: a break the viewer would read as a mistake becomes an asset the moment the cut
+*commits* to it as a before/after. Decide the turn point, then let every scene declare which side it's
+on.
 
 ## Assets that already exist — brief from these, don't invent from a blank page
 

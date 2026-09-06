@@ -50,9 +50,23 @@ Reasons, in order of how much they cost when ignored:
 The plate carries: subject, setting, lighting, wardrobe, palette, composition, and deliberate empty
 space where type will land. Say where the empty space goes in the prompt.
 
+**How the type layer actually gets rendered on this laptop.** Canva/Figma is the intended editor, but
+for a fast burned-in cut the working method (established on the 2026-08-30 rough cut) is **PIL PNG
+overlays composited with ffmpeg's `overlay` filter** — because this machine's ffmpeg is built without
+`libfreetype`, so `drawtext` is unavailable. Render each text screen as a transparent PNG in PIL
+(white text + shadow inside a semi-transparent rounded dark box, lower-third), then
+`overlay=0:0` it onto the scaled clip. Two standing caveats: **Gabarito is not installed** here
+(Arial Bold is the placeholder — a real cut must set the type in an editor that has Gabarito, per
+`creative-style.md`), and `uv run python` is required for PIL (system python 3.9.6 is too old).
+
 ## 2b. The pipeline — Flow builds frames, Grok animates them
 
 Established 2026-08-30 on the Riteangle BUILD-YOURSELF-FIRST cut, by A/B on the same start frame.
+
+**Grok Imagine setup, so it isn't rediscovered each cut:** Video mode, 720p, 6s, 9:16. Attach the
+reference frames in the **prompt bar** (the file-input the composer offers), **not** the photo-edit
+post-view — the post-view restyles a single image and re-rolls the face; the prompt bar is what carries
+identity into motion.
 
 - **Google Flow for still frames, Grok Imagine for motion.** Flow holds character identity, wardrobe
   and set across many frames; Grok does not have a character system at all. Grok performs the described
@@ -68,8 +82,30 @@ Established 2026-08-30 on the Riteangle BUILD-YOURSELF-FIRST cut, by A/B on the 
 - **Aspect ratio follows image count in Grok.** With ONE image attached, output inherits that image's
   aspect and prompt instructions about it are ignored. With SEVERAL attached, the 9:16 control stays
   live and is respected — so the existing 16:9 frame library is usable for vertical work, and a
-  multi-image upload also yields a continuous multi-beat sequence from one generation. Always upload in
-  batches.
+  multi-image upload also yields a continuous multi-beat sequence from one generation.
+- **A multi-image Grok batch must be same-generation siblings, or the background travels.** This is the
+  most expensive lesson of the "Tumse Na Ho Paayega" cut
+  (`lrn-2026-08-30-grok-multiref-must-be-same-generation`), and it corrects the "always upload in
+  batches" instinct from the aspect-ratio rule above. A multi-frame reference batch holds a stable set
+  ONLY if every frame is a re-angle of **one Flow generation** — literally the same rendered scene shot
+  from different angles. Frames that depict the same *kind* of place but come from *different*
+  generations carry different background pixels, and Grok blends them: on S3, three separate
+  "narrow Indian gali" generations morphed a blue Jodhpur wall into a Varanasi temple street inside one
+  6s clip. The decision rule:
+  - **Same-background trio** (siblings from one generation) → attach all three; you get a continuous
+    multi-beat clip with a held set, and the 9:16 control stays live.
+  - **Mixed-background trio** (same kind of place, different generations) → do NOT batch them; the clip
+    will travel. Drop to a **single frame** — a single stable frame beats a same-kind-different-source
+    trio every time.
+  - This constrains the **Flow/graph side too**: when you generate the 3-angle set per scene, produce
+    all three angles from ONE generation (Nano Banana 2 re-angling a single locked plate), never three
+    fresh prompts of "the same location." Three fresh prompts of one place are useless as a Grok
+    multi-ref batch.
+- **Re-dress and re-locate through Flow + Nano Banana 2, which preserves the face; never through Grok
+  restyle, which changes it.** Nano Banana 2 is identity-preserving — it holds the same face while
+  swapping outfit or setting — which is what lets one character (a locked "Priya") carry across every
+  scene. Grok's restyle re-rolls the face and breaks continuity, so it is not a re-dressing tool. Change
+  wardrobe/location in Flow, then bring the resulting frame into Grok only for motion.
 - **Flow's saved-character assets do not reliably resolve by name** and can be silently broken. Attach
   the actual frames as references instead of relying on an @name.
 
@@ -89,6 +125,32 @@ find them.
 [RENDER]         photographic, clean, no artefacts
 [NEGATIVE]       the standing avoid-list from §4, verbatim
 ```
+
+## 3b. The Grok motion-prompt skeleton — identity locks go first, and tight
+
+A still-plate prompt (§3) describes a scene. A **motion** prompt animating a reference frame has a
+different failure mode: the model drifts the face, the outfit and the background over the clip's
+duration unless each is hard-locked. Loose identity language ("a young Indian woman") is what let Grok
+re-roll the face mid-clip on the first pass. Write every motion prompt in this order:
+
+```
+[IDENTITY LOCK]    "Use the uploaded reference image EXACTLY — the same specific woman;
+                    do NOT change, morph, or swap her." Then her full physical description
+                    (skin tone, face shape, eye colour, hair length/colour/texture) spelled out,
+                    so the lock has something concrete to hold to.
+[OUTFIT LOCK]      name the exact garment; "do NOT alter her outfit."
+[BACKGROUND LOCK]  "Keep the SAME [specific location] the entire clip — do NOT change, morph,
+                    or travel the background." (This is where the §2b same-generation rule pays off.)
+[MOTION]           the first moment of the beat, arriving at the iconic moment — never starting
+                    from the end-state (§2b, `lrn-2026-08-30-end-state-frames-produce-frozen-clips`).
+[NO SPEECH]        "She does not speak, mouth stays closed" — otherwise the model invents lip-sync.
+[RENDER]           photorealistic, cinematic, warm tones, vertical 9:16.
+```
+
+The identity/outfit/background triple is not optional padding — it is the load-bearing part. A motion
+prompt that names the woman only once, at the top, is too loose; repeat the "do NOT alter her face,
+features, skin tone, hair, outfit, or identity" clause explicitly. See any block in a shipped
+`creatives/<slug>/grok-prompts.md` for the worked pattern.
 
 ## 4. The standing negative list — non-negotiable, paste into every prompt
 
@@ -173,6 +235,11 @@ is allowed to say "variant B is a UI render, not a Grok asset" and stop there.
   a roughly fixed offset (~98px up on its native export). Remove them by cropping and rescaling, never by
   inpainting — `delogo` leaves a smear that draws more attention than the mark did. Delivery upscales
   720×1280 to 1080×1920 anyway, so `crop=693:1232` costs nothing and holds exact 9:16.
+- **The two generators need two different crops — know both numbers.** A **Flow** still: crop the bottom
+  **150px** (`strip_flow_watermark`, §7's mandatory pass below). A **Grok** video clip: the wordmark
+  sits lower, so crop the bottom **90px** and rescale — `crop=in_w:in_h-90:0:0,scale=720:1280`. A clip
+  that is a Flow frame animated by Grok has already had the Flow sparkle removed at the still stage, so
+  it only needs the Grok 90px crop; don't double-crop.
 - **Every Google/Flow/Gemini-exported still MUST pass through `strip_flow_watermark`** (in
   `src/ad_management_agent/watermark.py`, 150px off the bottom) before it is used in any creative — this
   is not optional and not per-frame judgement. On 2026-08-30 a live Story Ad shipped with the sparkle

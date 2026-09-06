@@ -37,12 +37,14 @@ below carry the reasoning; this block guarantees nothing is missing from them.
 |---|---|
 | `propose` | Record a mode-5 recommendation before you execute it |
 | `snap-leads` | Register/inspect where Snap delivers lead-form submissions (webhook, per form) |
+| `snap-audience` | Create/grow a Snap Custom Audience or build a Lookalike from one |
 | `snap-push` | Create a proposed recommendation in Snap Ads Manager, PAUSED, then diff it back |
 | `snap-push-story` | Create a proposed Story Ad (COMPOSITE: a tap-through sequence of WEB_VIEW snaps) on Snap, PAUSED, then diff it back |
 | `meta-push` | Create a proposed recommendation in Meta Ads Manager, PAUSED, then diff it back |
 | `snap-push-lead` | Create a proposed LEAD recommendation (video + on-platform form) on Snap, PAUSED, then diff it back |
 | `meta-push-lead` | Create a proposed LEAD recommendation (video + instant form) in Meta, PAUSED, then diff it back |
 | `amend` | Revise a still-proposed recommendation, with an audit trail of what changed |
+| `verify-tracking` | Run rules/tracking.md's post-launch check against live user_acquisition data for a live recommendation |
 | `log-setup` | Record the real IDs after setting the ad up by hand |
 | `note` | Append a dated note to a record — for things that change mid-run |
 | `log-review` | Record mode-6's verdict on a live recommendation |
@@ -65,7 +67,7 @@ below carry the reasoning; this block guarantees nothing is missing from them.
 #### `propose`
 
 ```
-ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-name AD_SET_NAME --ad-name AD_NAME --targeting-summary TARGETING_SUMMARY --creative-ref CREATIVE_REF --destination-url DESTINATION_URL [--budget-cap BUDGET_CAP] --duration-days DURATION_DAYS --brief BRIEF [--from-idea FROM_IDEA] --gender {FEMALE,MALE} --min-age MIN_AGE --max-age MAX_AGE --countries COUNTRIES [--os {ANDROID,IOS}] [--expansion {on,off}] slug
+ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-name AD_SET_NAME --ad-name AD_NAME --targeting-summary TARGETING_SUMMARY --creative-ref CREATIVE_REF --destination-url DESTINATION_URL [--budget-cap BUDGET_CAP] [--duration-days DURATION_DAYS] --brief BRIEF [--from-idea FROM_IDEA] --gender {FEMALE,MALE} --min-age MIN_AGE --max-age MAX_AGE --countries COUNTRIES [--os {ANDROID,IOS}] [--expansion {on,off}] slug
 ```
 
 #### `snap-leads`
@@ -74,16 +76,22 @@ ad-agent propose [-h] --network NETWORK --campaign-name CAMPAIGN_NAME --ad-set-n
 ad-agent snap-leads [-h] [--form-id FORM_ID] [--url URL] [--integration-id INTEGRATION_ID] {forms,list,register,test,delete}
 ```
 
+#### `snap-audience`
+
+```
+ad-agent snap-audience [-h] [--name NAME] [--file FILE] [--description DESCRIPTION] [--seed-name SEED_NAME] [--country COUNTRY] [--similarity {REACH,BALANCE,SIMILARITY}] {list,upsert,lookalike}
+```
+
 #### `snap-push`
 
 ```
-ad-agent snap-push [-h] [--headline HEADLINE] [--dry-run] [--accept-campaign-cap] rec_id
+ad-agent snap-push [-h] [--headline HEADLINE] [--cta CTA] [--optimization-goal OPTIMIZATION_GOAL] [--dry-run] [--accept-campaign-cap] rec_id
 ```
 
 #### `snap-push-story`
 
 ```
-ad-agent snap-push-story [-h] [--headline HEADLINE] [--preview-headline PREVIEW_HEADLINE] [--dry-run] [--accept-campaign-cap] rec_id
+ad-agent snap-push-story [-h] [--headline HEADLINE] [--preview-headline PREVIEW_HEADLINE] [--cta CTA] [--dry-run] [--accept-campaign-cap] rec_id
 ```
 
 #### `meta-push`
@@ -108,6 +116,12 @@ ad-agent meta-push-lead [-h] --video VIDEO --message MESSAGE [--form-id FORM_ID]
 
 ```
 ad-agent amend [-h] --reason REASON [--campaign-name CAMPAIGN_NAME] [--ad-set-name AD_SET_NAME] [--ad-name AD_NAME] [--targeting-summary TARGETING_SUMMARY] [--creative-ref CREATIVE_REF] [--destination-url DESTINATION_URL] [--budget-cap BUDGET_CAP] [--duration-days DURATION_DAYS] [--gender {FEMALE,MALE}] [--min-age MIN_AGE] [--max-age MAX_AGE] [--countries COUNTRIES] [--os {ANDROID,IOS}] [--expansion {on,off}] rec_id
+```
+
+#### `verify-tracking`
+
+```
+ad-agent verify-tracking [-h] [--since SINCE] [--detail] rec_id
 ```
 
 #### `log-setup`
@@ -638,6 +652,53 @@ birthday before storing anything and writes a `marketing_apply_gate` suppression
 carrying an opaque id and nothing else. Storing-then-suppressing would mean a minor's
 phone number existed in the database, which is the thing the rule is about.
 
+## "Build me a Custom Audience / Lookalike on Snap" (`snap-audience`)
+
+```bash
+ad-agent snap-audience list
+ad-agent snap-audience upsert --name RA_SEED_FEMALE-LEADS_SNAP-META_202609 --file leads.csv
+ad-agent snap-audience lookalike --name RA_LAL_FEMALE-LEADS_IN_1PCT_202609 \
+    --seed-name RA_SEED_FEMALE-LEADS_SNAP-META_202609 --country IN --similarity SIMILARITY
+```
+
+Added 2026-09-01, after the first female-lead Lookalike (see
+[[project_snap_female_lookalike]] in memory) was built entirely by hand in Ads Manager
+because `snap.py` had no method for either object. The app owner's ask was explicit:
+future audience add/update should not require clicking through the UI again.
+
+- `upsert` is **additive**, not create-only: running it again next month with a longer
+  `--file` grows the same audience by name instead of making a duplicate. `--file` is a
+  plain text/CSV, one email per line — a header line reading `Email` or `Emails` is
+  skipped automatically. Hashing (SHA-256 of the trimmed, lowercased address, Snap's own
+  match key) happens inside `snap.py`, never on the caller, so a plaintext email is never
+  the thing that ends up logged or committed.
+- `lookalike` builds off an **existing** audience found by exact name — `--seed-name`,
+  not a seed file — and refuses to guess if two audiences share a name, same shape as
+  `find_campaign`. `--similarity` is Snap's own three-tier vocabulary (`REACH` broadest,
+  `BALANCE`, `SIMILARITY` narrowest), **not a percentage** — the `_1PCT_`-style naming
+  already live in this account's Ads Manager is a human naming convention, not something
+  Snap's API takes as a number. Default is `SIMILARITY`, the narrowest tier, because
+  every seed built by this codebase so far has been small (dozens of emails, not
+  thousands) and a small seed drifts fastest at a broad tier.
+- `list` prints every audience on the account with its id, type, and an approximate user
+  count — useful for finding the exact `--seed-name` to pass, and for confirming Snap has
+  finished matching a freshly uploaded list (a brand-new upload reads `users~0` for a
+  while; that is Snap still processing, not a failure).
+
+**This command still cannot attach an audience to a live ad squad's targeting.** Snap
+has an API for that too, but `snap.py` has no method for editing an *existing* ad
+squad at all — every other method in this file only ever creates new PAUSED objects.
+Adding an audience to what's currently delivering stays a human action in Ads Manager,
+the same as pausing has always been the only state change this module is allowed to
+make on a live object.
+
+**Why this doesn't weaken decision #3.** A Customer List / Lookalike segment carries no
+`status` an ad can be served from and no budget field — there is nothing in its create
+payload for the transport guard (`_safety_violations`) to refuse, so it passes through
+unmodified, correctly. Nothing above gains the ability to enable anything or move a
+budget; it only lets an audience be created, grown, and used as the seed for another
+audience.
+
 ## "This proposal needs correcting before I run it"
 
 ```
@@ -672,6 +733,43 @@ ad-agent log-setup <rec_id> --network snap|meta \
 ```
 Status → `live`. This is what lets `ad-audit` later join a real outcome back to this exact
 recommendation, so this step is mandatory the moment an ad actually goes live &mdash; don't let it sit.
+
+## "Did the tracking actually work?" (`verify-tracking`)
+
+```
+ad-agent verify-tracking <rec_id> [--since YYYY-MM-DD] [--detail]
+```
+
+Runs `rules/tracking.md`'s post-launch check against live `user_acquisition` data, for any record that
+already has an `ad_id`. Added 2026-09-05. That check has been mandatory since the 2026-08-21 incident
+&mdash; 54 Snap installs, none attributable, a week of spend &mdash; and until now nothing automated
+it, so it depended on someone remembering to open a SQL client. `pdc.readonly_db_url` had been sitting
+in the config schema that whole time with no code reading it. **A mandated check that relies on memory
+is the same class of failure as the incident it was written for.**
+
+**It reports three outcomes and never a bare pass/fail**, because zero rows is genuinely ambiguous
+&mdash; it means either "tracking is broken" or "nobody has signed up yet", and those need opposite
+responses:
+
+| Outcome | Means |
+|---|---|
+| `OBSERVED` | rows carry this ad's `utm_id` &mdash; the referrer chain is **proven**, not merely expected |
+| `SUSPICIOUS` | other rows landed in the window but none from this ad &mdash; could be no signups yet, could be dropped attribution. Check the printed rows for the landing page's hardcoded default |
+| `INCONCLUSIVE` | no rows at all &mdash; nothing proven either way. The normal state for a fresh ad |
+
+Reporting `INCONCLUSIVE` as a failure would train people to ignore the check; reporting it as a pass
+is precisely the lie the 2026-08-21 incident was made of.
+
+**What it counts is SIGN-UPS &mdash; not installs, and not first opens.** A `user_acquisition` row is
+written by `/api/attribution/install`, which requires a Bearer session and keys the row on `user_id`,
+so it cannot exist until sign-up completes. Verified 2026-09-05 by reading
+`pocket-dating-coach/mobile/lib/attribution.dart`, which returns early while `currentSession == null`.
+**Per-ad install counts are not available from this data at all** &mdash; see the funnel coverage table
+in `rules/tracking.md`.
+
+Shells out to `psql` rather than adding a postgres driver to a package whose only dependency is
+`pyyaml`. Credentials reach the child as `PG*` environment variables, never as an argv connection
+string, so they never appear in `ps`.
 
 ## "Something changed while it was running"
 

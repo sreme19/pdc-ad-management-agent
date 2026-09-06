@@ -404,8 +404,27 @@ class MetaClient:
         return hits[0] if hits else None
 
     def create_adset(self, *, name, campaign_id, targeting, daily_budget_inr,
-                     start_time, end_time, pixel_id=None) -> dict:
-        """Create the ad set, PAUSED, optimising for landing-page views.
+                     start_time, end_time, pixel_id=None,
+                     optimization_goal: str = "LANDING_PAGE_VIEWS") -> dict:
+        """Create the ad set, PAUSED, optimising for `optimization_goal`.
+
+        **`optimization_goal` became a parameter on 2026-09-06 and defaults to the
+        LANDING_PAGE_VIEWS every prior ad set used.** It has to vary because a
+        landing-page view is a thing Meta observes by watching a page of ours load,
+        and the direct-to-store funnel has no page of ours in it. Optimising a
+        store-bound ad set for LPV points the delivery algorithm at an event that
+        can never be counted off `play.google.com`, so it falls back to something
+        undeclared. `LINK_CLICKS` optimises for the tap, which is observably
+        counted. This is the same correction the Snap arm made on 2026-09-05 when
+        `rec-2026-09-05-moveon-getw-w1830-snap` moved LANDING_PAGE_VIEW -> SWIPES,
+        and for the identical reason.
+
+        Say the consequence out loud rather than letting the field name hide it:
+        LINK_CLICKS buys the CHEAPEST TAP, and the cheapest tap comes from the
+        people most willing to tap and least likely to install. Nothing on this
+        route can tell Meta which taps became installs — no page of ours renders,
+        so the pixel cannot fire and `marketing-conversions.ts`'s CAPI forward is
+        bypassed. See rules/tracking.md's Meta direct-to-store coverage table.
 
         **`pixel_id` is deliberately optional here, unlike snap.py's equivalent, and
         `promoted_object` is deliberately not sent.** This was wrong in the first cut of
@@ -441,7 +460,7 @@ class MetaClient:
             "campaign_id": campaign_id,
             "status": "PAUSED",
             "targeting": targeting,
-            "optimization_goal": "LANDING_PAGE_VIEWS",
+            "optimization_goal": optimization_goal,
             "billing_event": "IMPRESSIONS",
             "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
             # round() before sending, not truncation: Rs 999.999/day is a rounding
@@ -529,6 +548,56 @@ class MetaClient:
             # switched on. That turns a guess into an observation, and the observed
             # names are what a precise per-feature opt-out should be built from.
             # See q-2026-08-28-meta-individual-creative-features.
+        })
+
+    def create_link_video_creative(self, *, name, video_id, thumbnail_hash, headline,
+                                   message, url,
+                                   call_to_action: str = "INSTALL_NOW") -> dict:
+        """Create a VIDEO creative whose CTA opens a website (not a lead form).
+
+        Added 2026-09-06. Three creatives now exist on this client and the
+        differences are not cosmetic, so they are named here rather than rediscovered:
+
+          * `create_creative` — `link_data` + `image_hash`. A still image. The
+            headline goes in `name`, the destination in a top-level `link`.
+          * `create_lead_creative` — `video_data`, CTA value carries a
+            `lead_gen_form_id`. There is no destination URL at all; the form opens
+            inside Meta.
+          * this one — `video_data`, CTA value carries a `link`. **A video creative
+            has no top-level `link` field.** Putting the URL where `link_data` puts
+            it is accepted and silently ignored, producing an ad whose CTA goes
+            nowhere useful, so the destination lives in
+            `call_to_action.value.link` and nowhere else.
+
+        `title` is the headline field on `video_data`, where `link_data` spells the
+        same thing `name`. Crossing them is another silent drop.
+
+        `image_hash` is not optional: Meta rejects a video creative with no
+        thumbnail. It can be a hash from `upload_image`, or — for a video already in
+        this account's library — the `image_hash` read back off the existing
+        creative's `object_story_spec.video_data`, which is what reusing an approved
+        asset means in practice.
+        """
+        return self.post(f"/{self.account_path}/adcreatives", {
+            "name": name,
+            "object_story_spec": {
+                "page_id": str(self.cfg["page_id"]),
+                "video_data": {
+                    "video_id": str(video_id),
+                    "image_hash": thumbnail_hash,
+                    "title": headline,
+                    "message": message,
+                    "call_to_action": {
+                        "type": call_to_action,
+                        "value": {"link": url},
+                    },
+                },
+            },
+            # No degrees_of_freedom_spec, for the reason create_creative records at
+            # length: the single standard_enhancements opt-out was deprecated
+            # 2026-08-28 and its replacement names are documented only behind an
+            # internal URL. meta-push reads the block back and reports what Meta
+            # actually switched on instead of guessing field names at it.
         })
 
     def create_ad(self, *, name, adset_id, creative_id) -> dict:
@@ -815,6 +884,83 @@ class MetaClient:
                 f"{got!r}, not the tracking string asked for.\nRefusing to attach an "
                 "untracked creative — an ad that spends without attribution is the "
                 "2026-08-21 failure. Set the tracking by hand in Ads Manager."
+            )
+        self.post(f"/{ad_id}", {"creative": {"creative_id": str(tracked["id"])}})
+        after = self.get(f"/{ad_id}", fields="id,status,creative")
+        if (after.get("creative") or {}).get("id") != str(tracked["id"]):
+            raise MetaError(
+                f"asked Meta to point ad {ad_id} at creative {tracked['id']} but it "
+                f"still reads {(after.get('creative') or {}).get('id')!r}. Fix by hand."
+            )
+        return tracked
+
+    def retarget_video_creative(self, *, ad_id: str, creative: dict, link: str,
+                                name: str) -> dict:
+        """Repoint a video ad at a creative whose LINK carries that ad's own real id.
+
+        The store-destination sibling of `attach_tracked_creative`, added
+        2026-09-06. It solves the same problem — the ad id does not exist when the
+        first creative is built, and `rules/tracking.md` requires it to reach the
+        analytics — and it has to solve it a different way.
+
+        **`url_tags` is the wrong instrument against a store listing, and it fails
+        silently.** Meta implements `url_tags` by APPENDING the string to the
+        outbound URL at click time. Play discards every parameter appended to a
+        listing URL; only its own `referrer=` survives an install. So a store-bound
+        ad carrying `url_tags` reports a healthy setup in Ads Manager, resolves to a
+        real listing, and delivers installs that nothing can ever attribute — the
+        2026-08-21 incident with a different first step, which is exactly what
+        `lrn-2026-09-05-store-url-shape-did-not-travel-to-traffic-path` records
+        against the Snap traffic path.
+
+        The tracking therefore has to be INSIDE the link, URL-encoded in
+        `referrer=` (built by `cli._store_referrer_url`, the single implementation).
+        A link is part of `object_story_spec`, and Meta creatives are effectively
+        immutable once made — the same wall `attach_tracked_creative` documents. So
+        the fix is the same dance with a different field: build a NEW creative whose
+        `call_to_action.value.link` is the final URL, and repoint the ad at it. The
+        ad id is stable across the swap, so the literal id inside the referrer stays
+        correct.
+
+        `url_tags` is deliberately NOT set here. Setting it as well would append
+        params Play throws away, which costs nothing but tells the next reader the
+        tracking lives somewhere it does not.
+
+        The consequence, stated rather than hidden, as before: this leaves one
+        superfluous provisional creative behind, and `meta.py` cannot delete it by
+        design. A spare object is the cheaper failure than an unresolved macro.
+        """
+        video = (creative.get("object_story_spec") or {}).get("video_data") or {}
+        cta = video.get("call_to_action") or {}
+        tracked = self.post(f"/{self.account_path}/adcreatives", {
+            "name": name,
+            "object_story_spec": {
+                "page_id": str(self.cfg["page_id"]),
+                "video_data": {
+                    "video_id": video.get("video_id"),
+                    "image_hash": video.get("image_hash"),
+                    "title": video.get("title"),
+                    "message": video.get("message"),
+                    "call_to_action": {
+                        "type": cta.get("type"),
+                        "value": {"link": link},
+                    },
+                },
+            },
+        })
+        # Read the link back off Meta rather than trusting the 200. This is the
+        # check `attach_tracked_creative` makes against url_tags, applied to the
+        # field that actually carries the tracking on this route.
+        got = self.get(f"/{tracked['id']}", fields="id,object_story_spec")
+        got_link = ((((got.get("object_story_spec") or {}).get("video_data") or {})
+                     .get("call_to_action") or {}).get("value") or {}).get("link")
+        if got_link != link:
+            raise MetaError(
+                f"creative {tracked['id']} was created but its CTA link read back as "
+                f"{got_link!r}, not the tracked URL asked for:\n  {link}\n"
+                "Refusing to attach an untracked creative — an ad that spends without "
+                "attribution is the 2026-08-21 failure. Set the link by hand in Ads "
+                "Manager."
             )
         self.post(f"/{ad_id}", {"creative": {"creative_id": str(tracked["id"])}})
         after = self.get(f"/{ad_id}", fields="id,status,creative")
