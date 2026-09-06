@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-29-moveon-lead-w1824-meta
 network: meta
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-24_CASUAL_MOVEON-LEAD
 ad_name: VID_MOVE-ON-PROPER_A_20260829
@@ -38,6 +38,8 @@ campaign_daily_cap_inr: null
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-29'
 executed: '2026-08-29'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -344,3 +346,11 @@ Independent section-8 pass returned FAIL (men in party-scene background; AI craf
 ## Note — observation (2026-08-29)
 
 Pushed PAUSED via meta-push-lead 2026-08-29 after the Page permission fix (Riteangle page upgraded from Partial/Ads-and-Insights to Full for riteangle-api; a Meta account-verification step was completed by the app owner first). Tracked form 1979788699404507; video 1719740729289211; every read-back check ok except one KNOWN OPEN ITEM: Meta stores the thank-you URL's ra_lead braces percent-encoded (%7B%7Blead_id%7D%7D). Whether macro substitution fires on the encoded form is undetermined — the mandatory end-to-end test submission decides it. If the page receives literal braces, attribution falls back to ad-set level (utm_term). DO NOT ENABLE before that test. Asset pushed is the 720p v3 rough per the owner's section-8 override; swap the creative before enabling if a finished 1080 render lands.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07. Ledger said 'live' since 29 August. Campaign, ad set 6984366122081 and ad 6984368352481 are all PAUSED, window closed 2026-09-03. THIS AD SET NEVER DELIVERED A SINGLE IMPRESSION: the insights edge returns no data at all - zero spend, zero impressions, zero clicks - for a record that has read 'live' for nine days. Inconclusive is the only honest verdict: it answered nothing, because it never ran. THE CAUSE IS KNOWN AND IT IS NOT A MYSTERY. Parent campaign 6984366120881 carries a CAMPAIGN-LEVEL daily budget of Rs 300 - campaign_budget_optimization reads True - with two ad sets under it. Meta allocated the entire budget to the 25-30 sibling (Rs 636.37) and nothing to this one. That is exactly the failure meta-push refuses a CBO parent to prevent, with no escape hatch; both these lead records predate that guard and were built by hand in Ads Manager. THE CONSEQUENCE WORTH STATING: any belief that women 18-24 do not respond to this creative on Meta has no support whatsoever. The band was never tested. Re-run it under a non-CBO parent, or as the only ad set under this one. (Five marketing_page_views rows carry this ad set's utm_term despite zero impressions - almost certainly the deploy-check traffic destinations.yaml records against /get/w-apply, not real arrivals.)
+
+

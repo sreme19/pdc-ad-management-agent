@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-30-buildyourself-story-w1830-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_TRAFFIC_GETW_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-STORY
 ad_name: STORY_BUILD-YOURSELF-FIRST_A_20260830
@@ -32,6 +32,8 @@ campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-30'
 executed: '2026-08-30'
 last_note: '2026-08-30'
+verdict: not-working
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -128,3 +130,11 @@ First Story Ad this account has ever built. Six live-API discoveries along the w
 ## Note — incident (2026-08-30)
 
 Retired 2026-08-30. Shipped live with the Google/Flow 'made with AI' sparkle baked into several plates and a 'More' CTA. Ad dd7a6ac2 DELETED via API (delivery + spend stopped). Superseded by rec-2026-08-30-buildyourself-story-b-w1830-snap: watermark cropped off every Flow still (strip_flow_watermark), CTA now APPLY_NOW, audio-library track added in Ads Manager UI. The 15 leaf/preview/composite creatives are orphaned but not API-deletable (Snap E3003 on DELETE /creatives) — inert, unreferenced.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: not-working
+- Summary: RECONCILED 2026-09-07; squad 5d617ab4 PAUSED since 2026-09-04. THE BIGGEST TRAFFIC RESULT HERE AND IT CONVERTED NOBODY. Squad total 38,026 impressions, 1,504 swipes, Rs 408.90, and on our side 1,095 page views on /get/w and 37 store clicks between 30 Aug and 2 Sep - the largest volume of tracked women's traffic this account has ever produced. ZERO signups. n=1,095 is 36x MIN_SAMPLE, so this is the strongest negative finding in the ledger. This record's own ad (dd7a6ac2) took 5,021 impressions, 148 swipes and Rs 63.40 of that - about 13% of the squad - so the per-ad read is thin, BUT the squad-level zero holds regardless of which ad inside it earned the traffic, which is why the verdict is not-working rather than inconclusive.
+
+

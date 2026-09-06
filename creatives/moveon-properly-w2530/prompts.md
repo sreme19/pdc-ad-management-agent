@@ -132,3 +132,11 @@ Per §10, name the clause. Most likely failures on A and B:
 | A | *pending* | — | — | — |
 | B | *pending* | — | — | — |
 | C | *pending* | — | — | — |
+
+## Outcome — rec-2026-08-27-moveon-w2530-meta (2026-09-07)
+
+**not-working** — RECONCILED 2026-09-07 against the live account; the ledger had carried this as 'live' for 10 days after it stopped. Ad set 6984035818681 and ad 6984036525881 are both PAUSED and the run window closed 2026-09-02. IT DID DELIVER, and well, at the top of the funnel: Rs 366.39 spend, 9,606 impressions, 606 link clicks, 465 Meta-counted landing-page views, and 611 page views recorded on OUR side for this ad set - so its url_tags worked and the traffic was tracked correctly end to end. THE VERDICT IS not-working BECAUSE OF WHAT HAPPENED NEXT: 611 tracked page views produced ZERO signups. That is well above MIN_SAMPLE=30, so this is a finding rather than a shrug - the ad bought attention on /get/w cheaply and none of it converted. Two caveats recorded rather than buried. (1) The record states Rs 1,000/day; the ad set's actual daily_budget was Rs 300/day, so this ran at under a third of its planned rate and never reached the Rs 800-1,200 band where budget.md says delivery exits learning - the CONVERSION read is solid on n=611 views, the cost-efficiency read is not. (2) Success metric as stated was landing-page views, and on that metric alone it succeeded; the verdict is against the outcome the views existed to produce.
+
+- Ad set: `WOMEN_25-30_CASUAL_MOVEON-LPV`
+- Audience: female, 25-30, IN, all devices, expansion off, regulated-content flagged
+- Spend: Rs 1000/day x 5d

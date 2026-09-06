@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-09-01-moveon-lead-w1830-th-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_TH_PAN_TOF_202609
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-LEAD-TH
 ad_name: VID_MOVE-ON-PROPER_A_20260901
@@ -40,6 +40,8 @@ campaign_daily_cap_inr: null
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-09-01'
 executed: '2026-09-01'
+verdict: not-working
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -129,3 +131,11 @@ test on this squad.
 - Campaign ID: 3430864b-170d-44b6-a342-c7eed598bc8b
 - Ad set ID: b099e09c-69b8-4c9b-9f22-fedd6885bebc
 - Ad ID: b60533e0-ad0f-4a37-8b94-f2fcf9f8c8cd
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: not-working
+- Summary: RECONCILED 2026-09-07; squad b099e09c PAUSED since 2026-09-02. THE THAILAND TEST FAILED ON INVENTORY COST, NOT ON CREATIVE, AND THAT IS THE USEFUL PART. It spent Rs 268.95 to buy 772 impressions and 3 swipes. That is a CPM of Rs 348.38. Every India squad reconciled today came in between Rs 6.50 and Rs 12.85 CPM - so Snap inventory against this audience in Thailand cost roughly 27 to 54 times what the same money buys in India. Zero page views and zero signups follow trivially from 3 swipes; there is no creative read here at all and none should be inferred. The MOVE-ON-PROPER hook is untested in Thailand, not rejected. WHAT THIS DECIDES: a Rs 300/day budget cannot buy a readable Thailand test. Either fund a Thailand run at a level that produces four figures of impressions, or drop the market - do not re-run this at the India default and expect a different answer.
+
+

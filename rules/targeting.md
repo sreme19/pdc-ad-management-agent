@@ -51,6 +51,14 @@ Open question the source docs flag and leave unresolved (Sree's Jul 30 note): wh
 further in already-penetrated metros or test a Tier-2 city (e.g. Indore) — treat this as a live
 hypothesis for `ad-ideation`, not a settled call.
 
+**A new country is a budget question before it is a targeting question.** Inventory price is not
+constant across markets and the difference is not marginal: the first Thailand test bought
+impressions at a **₹348 CPM against India's ₹6.50–₹12.85**, so the standing ₹300/day default bought
+772 impressions and 3 swipes — a non-answer that reads like a creative failure. Before proposing an
+ad set in a market this account has not run in, go to `budget.md`'s "A market's price is a budget
+input" section and size the budget against that market's own CPM. Thailand is currently **untested,
+not rejected** (`lrn-2026-09-07-snap-thailand-cpm-is-27x-india`).
+
 ## Other targeting parameters
 
 - Separate ad sets by gender — never a mixed-gender ad set. The gender goes in the ad-set name as a

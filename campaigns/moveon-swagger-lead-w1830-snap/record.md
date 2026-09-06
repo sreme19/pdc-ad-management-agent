@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-31-moveon-swagger-lead-w1830-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-LEAD
 ad_name: VID_MOVE-ON-PROPER_B_20260831
@@ -41,6 +41,8 @@ campaign_daily_cap_inr: 300.0
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-31'
 executed: '2026-09-01'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -164,3 +166,11 @@ and now on its second ad. Worth closing rather than carrying forward again.
 - Ad set ID: 85c2e782-ea07-4216-8986-f272bdb5d4d7
 - Ad ID: 0bb15d8b-d9c8-40f8-ad1e-e755c1ece01b
 - Deviated from brief: Enabled 2026-09-01 with three of the brief's four stated conditions unaddressed, so the read is weaker than the brief assumed. (1) EXPANSION STILL ON: squad 85c2e782 reads enable_targeting_expansion=true / SMART_TARGETING, unchanged since 2026-08-31 - see lrn-2026-08-31-snap-forces-expansion-on-lead-squads and q-2026-08-31-does-snap-force-expansion-on-lead-objective. Any male drift in the delivered leads is expected under this setting and must not be blamed on the creative. (2) BUDGET UNCHANGED at Rs 300/day squad under a Rs 300/day campaign cap, so the record's Rs 300 is right but sits below the Rs 800-1200 threshold; VID_BUILD-YOURSELF-FIRST_A_20260830 WAS paused, which is the one condition that was addressed, leaving two active ads (this and VID_MOVE-ON-PROPER_A_20260829) at roughly Rs 150/day each. (3) END TIME STILL 2026-09-03T07:50Z, so the actual window is ~2 days, not the 5 the record states - expect roughly 40 percent of the planned impressions and treat any A/B verdict as directional at best. (4) NO PIXEL on the squad (pixel_id null) - deliberate, not a lapse: snap.py's create_lead_adsquad omits it because LEAD_FORM_SUBMISSIONS converts inside Snap where a pixel cannot see. Note the account's seven older hand-built lead squads all carry pixel 0657d30b because Ads Manager attaches it by default, so this squad is the odd one out by design. Consequence: Snap observes the form submit and nothing after it, so all post-form visibility comes from the page beacon and the Sheets sync, not from Snap's own reporting. Ad review status APPROVED.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07; squad PAUSED since 2026-09-03. This ad (0bb15d8b) barely ran: 6,745 impressions, 34 swipes, Rs 54.03 - 6% of its squad's impressions and the lowest swipe rate of the four lead ads at 0.50%. THE 13 SIGNUPS THIS SQUAD PRODUCED CANNOT BE ASSIGNED TO ANY ONE OF ITS FOUR RECORDS. Squad 85c2e782 carries four separate lead ads (moveon-lead, buildyourself-lead, moveon-swagger-lead, knowyourworth-lead) and a lead form's end page is fixed before the ad exists, so its referrer stops at SQUAD level with no utm_id. rules/tracking.md warned that two ads in one squad are indistinguishable in user_acquisition; this is that warning realised, on the only Snap funnel that has ever produced a signup. Squad totals: 114,518 impressions, 1,132 swipes, Rs 1,472.26, 45 page views on /get/w-apply, 36 store clicks, 13 signups. The 13 are real and they are the best result in this ledger; they are simply unattributable to a creative. With 34 swipes this ad has no readable result of its own under any gate. Worth noting for the next swagger test: it was starved inside a shared squad rather than tested, so the swagger hook is untested on the lead funnel, not disproven.
+
+

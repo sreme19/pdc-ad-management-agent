@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-28-moveon-swagger-w2530-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_TRAFFIC_GETW_IN_PAN_TOF_202608
 ad_set_name: WOMEN_25-30_CASUAL_MOVE-ON-PROPER_LPV
 ad_name: VID_MOVE-ON-PROPER_A_20260828
@@ -37,6 +37,8 @@ campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-28'
 last_note: '2026-08-28'
 executed: '2026-08-28'
+verdict: not-working
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -159,3 +161,11 @@ Pushed to Snap PAUSED 2026-08-28 and read back clean, 10/10 fields matching. Rea
 ## Note — observation (2026-08-28)
 
 ENABLED by the app owner 2026-08-28 and verified live by reading Snap directly, not from the record: campaign ACTIVE, ad squad ACTIVE, ad ACTIVE with review_status=APPROVED. It was not held in review. That approval is the first real evidence on carried risk #2 - Snap's ad review passed a fully AI-generated person on video, unlabelled. Treat it as evidence, not as clearance: an approval is Snap declining to block this asset today, not a ruling that the synthetic-media policy has been read and satisfied, and Snap can pull an ad after approving it. The policy itself is still unread. No delivery yet at first check: our ad squad does not appear in the leaderboard at all, and the only Snap row for 2026-08-28 is the older WOMEN_18-22_CASUAL_LPV set at 3 impressions / Rs 0.02. Zero here means not-yet-started, not a failure - the ad was enabled minutes earlier. WHAT TO WATCH, given this is the first video this account has ever run and the first at Rs 300/day on a new campaign with no parent cap: (1) whether impressions start at all, since a video creative is a new format for this ad account and delivery may behave differently from the static assets; (2) the beacon on get_w for utm_content=VID_MOVE-ON-PROPER_A_20260828 and utm_id=cd48b86d-607b-4aca-bd22-7aaefaa67de2, which is the join that proves tracking end to end - Snap's own LPV count is expected to read LOWER than the beacon per lrn-2026-08-26-snap-and-beacon-disagree-on-lpv; (3) whether it leaves the learning phase at all at Rs 300/day, which rules/budget.md says it may not.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: not-working
+- Summary: RECONCILED 2026-09-07; squad dee446d1 PAUSED since 2026-08-30. Delivered 17,723 impressions, 120 swipes, Rs 169.82 (CPM Rs 9.58). Our side: 92 page views on /get/w, 4 store clicks, ZERO signups. Against a plan of Rs 300/day x 5d = Rs 1,500 it spent 11% of budget, so this is a thin test and the cost-efficiency read is weak. The conversion read is not: 92 tracked page views produced no signup at all, above MIN_SAMPLE=30. Consistent with every other Snap TRAFFIC funnel reconciled today - see lrn-2026-09-07-snap-traffic-funnels-convert-nobody.
+
+

@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-21-women-1822-casual-lpv
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_TRAFFIC_GET_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-22_CASUAL_LPV
 ad_name: STORY_FOURTEEN-SUITORS_A_20260824
@@ -25,6 +25,8 @@ last_note: '2026-08-26'
 campaign_daily_cap_inr: 300.0
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-26'
+verdict: not-working
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -209,3 +211,11 @@ Ad squad and ad keep status ACTIVE with delivery INVALID_NOT_EFFECTIVE_ACTIVE, s
 Day 1 is not a readable result and should not be pooled with whatever follows. It was one 90-minute burst in a single evening window, in learning phase throughout, at a third of budget.md's floor, with the same 6,685 people seeing the ad eight times each. Tap rate of 2 in 96 has a confidence interval wide enough to contain almost anything.
 
 The open question for day 2: the 20.9% benchmark this recommendation was built on belongs to Female 18-22-LPV, which pointed at /get — the men's page. This ad set points at /get/w and sits at 2.1%. That is the opposite of the hypothesis. At n=2 it means nothing, but it is the specific thing a day at Rs 1,000 would settle: roughly 275 views/day makes 2% and 20% distinguishable at a glance (6 taps versus 57).
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: not-working
+- Summary: RECONCILED 2026-09-07; squad 1b993192 PAUSED, ledger had carried it live since 21 August. Delivered 55,333 impressions, 174 swipes, Rs 359.90 - a 0.31% swipe rate, the worst of any Snap squad here. Our side: 100 page views on /get/w, 2 store clicks, ZERO signups. n=100 page views is above MIN_SAMPLE=30, so the conversion read is a finding. TWO CAVEATS. (1) This is the record budget.md cites as the campaign-cap incident: planned Rs 1,000/day x 5d = Rs 5,000, actual total spend Rs 359.90, because a campaign-level cap silently overrode the squad budget. So the COST read is meaningless and the creative never got a funded test. (2) The verdict is against conversion, which the volume does support: 55k impressions bought 100 page views and nothing beyond.
+
+

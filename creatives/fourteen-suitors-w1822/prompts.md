@@ -122,3 +122,11 @@ Per §10, name the clause. The two most likely failures on A and B:
 | A | *pending* | — | — | — |
 | B | *pending* | — | — | — |
 | C | *pending* | — | — | — |
+
+## Outcome — rec-2026-08-21-women-1822-casual-lpv (2026-09-07)
+
+**not-working** — RECONCILED 2026-09-07; squad 1b993192 PAUSED, ledger had carried it live since 21 August. Delivered 55,333 impressions, 174 swipes, Rs 359.90 - a 0.31% swipe rate, the worst of any Snap squad here. Our side: 100 page views on /get/w, 2 store clicks, ZERO signups. n=100 page views is above MIN_SAMPLE=30, so the conversion read is a finding. TWO CAVEATS. (1) This is the record budget.md cites as the campaign-cap incident: planned Rs 1,000/day x 5d = Rs 5,000, actual total spend Rs 359.90, because a campaign-level cap silently overrode the squad budget. So the COST read is meaningless and the creative never got a funded test. (2) The verdict is against conversion, which the volume does support: 55k impressions bought 100 page views and nothing beyond.
+
+- Ad set: `WOMEN_18-22_CASUAL_LPV`
+- Audience: Snapchat, women only, 18-22, pan-India, Android-weighted. CASUAL-SELECTIVE perso
+- Spend: Rs 300/day x 5d

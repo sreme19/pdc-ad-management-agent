@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-09-01-knowyourworth-lead-w1830-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-LEAD
 ad_name: VID_KNOW-YOUR-WORTH_A_20260901
@@ -38,6 +38,8 @@ campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-09-01'
 last_note: '2026-09-01'
 executed: '2026-09-01'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -139,3 +141,11 @@ Read-back diff at creation: squad 85c2e782 reports audience expansion TRUE thoug
 - Campaign ID: 1326aa05-902c-4cec-be92-0a7440ac536d
 - Ad set ID: 85c2e782-ea07-4216-8986-f272bdb5d4d7
 - Ad ID: 85bde974-1b15-4436-9589-f810bc06002c
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07; squad PAUSED since 2026-09-03. This ad (85bde974) delivered 7,565 impressions, 69 swipes, Rs 128.15 - 7% of its squad's impressions, over a window of at most two days. THE 13 SIGNUPS THIS SQUAD PRODUCED CANNOT BE ASSIGNED TO ANY ONE OF ITS FOUR RECORDS. Squad 85c2e782 carries four separate lead ads (moveon-lead, buildyourself-lead, moveon-swagger-lead, knowyourworth-lead) and a lead form's end page is fixed before the ad exists, so its referrer stops at SQUAD level with no utm_id. rules/tracking.md warned that two ads in one squad are indistinguishable in user_acquisition; this is that warning realised, on the only Snap funnel that has ever produced a signup. Squad totals: 114,518 impressions, 1,132 swipes, Rs 1,472.26, 45 page views on /get/w-apply, 36 store clicks, 13 signups. The 13 are real and they are the best result in this ledger; they are simply unattributable to a creative. 69 swipes is not a readable sample, and the KNOW-YOUR-WORTH hook is therefore untested rather than unsuccessful. Its creative (creatives/girlboss-moodboard-w1830) has never had a funded solo run.
+
+

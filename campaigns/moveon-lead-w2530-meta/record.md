@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-29-moveon-lead-w2530-meta
 network: meta
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_25-30_CASUAL_MOVEON-LEAD
 ad_name: VID_MOVE-ON-PROPER_A_20260829
@@ -35,6 +35,8 @@ campaign_daily_cap_inr: null
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-29'
 executed: '2026-08-29'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -341,3 +343,11 @@ Same section-8 FAIL and owner override as rec-2026-08-29-moveon-lead-w1824-meta 
 ## Note — observation (2026-08-29)
 
 Pushed PAUSED 2026-08-29, same run as rec-2026-08-29-moveon-lead-w1824-meta: tracked form 1048266097796124, same video asset, same read-back result, same open ra_lead percent-encoding question, same do-not-enable-before-the-end-to-end-test condition.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07. Ledger said 'live'; the ad set is status ACTIVE but effective_status CAMPAIGN_PAUSED - stopped by its paused parent, not by itself - and its window closed 2026-09-03. IT DELIVERED AND IT PRODUCED LEADS: Rs 636.37 spend, 4,626 impressions, 88 link clicks, 551 video views, and 29 leads at Rs 21.94 per lead. Against budget.md's ~Rs 200/signup context for women that is cheap, and it took the whole campaign's CBO budget while its 18-24 sibling got nothing. VERDICT IS inconclusive ON THE REPO'S OWN GATE, not on judgement: the stated success metric is cost per lead, the sample is 29 leads, and MIN_SAMPLE is 30. One short. Calling it 'working' would be a guess dressed as a finding, and the gate exists precisely so that does not happen quietly. THE MORE IMPORTANT NUMBER IS DOWNSTREAM AND IT IS BAD: those 29 leads produced 4 page views on /get/w-apply and ZERO signups. So the on-platform form converts cheaply and almost nobody completes the journey past it. Cost per lead is therefore measuring something that is not yet worth what it costs, and the next Meta lead test should be judged on signups, not on leads.
+
+

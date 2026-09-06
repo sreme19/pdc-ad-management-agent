@@ -1,3 +1,14 @@
+---
+id: note-2026-09-05-install-postback-spec
+title: Install postback to Snap — the spec, for pocket-dating-coach to build
+source: own-research
+captured: '2026-09-05'
+learnings:
+- lrn-2026-09-05-snap-capi-already-exists-on-landing-pages
+- lrn-2026-09-05-user-acquisition-counts-signups-not-installs
+- lrn-2026-09-06-meta-app-promotion-blocked-no-play-url
+---
+
 # Install postback to Snap — the spec, for `pocket-dating-coach` to build
 
 **Written 2026-09-05 in `ad-management-agent`, for a build that belongs in `pocket-dating-coach`.**

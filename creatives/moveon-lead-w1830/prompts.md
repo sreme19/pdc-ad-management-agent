@@ -348,3 +348,27 @@ casting is metro-coded. **The settings above were deliberately written down from
 Bangalore locations** (Indiranagar, rooftop terraces, café window tables) to generic Indian urban
 interiors and residential streets, as a cheap hedge. If the answer is "go properly non-metro", the
 wardrobe and settings need a real rewrite, not a hedge.
+
+## Outcome — rec-2026-08-29-moveon-lead-w1824-meta (2026-09-07)
+
+**inconclusive** — RECONCILED 2026-09-07. Ledger said 'live' since 29 August. Campaign, ad set 6984366122081 and ad 6984368352481 are all PAUSED, window closed 2026-09-03. THIS AD SET NEVER DELIVERED A SINGLE IMPRESSION: the insights edge returns no data at all - zero spend, zero impressions, zero clicks - for a record that has read 'live' for nine days. Inconclusive is the only honest verdict: it answered nothing, because it never ran. THE CAUSE IS KNOWN AND IT IS NOT A MYSTERY. Parent campaign 6984366120881 carries a CAMPAIGN-LEVEL daily budget of Rs 300 - campaign_budget_optimization reads True - with two ad sets under it. Meta allocated the entire budget to the 25-30 sibling (Rs 636.37) and nothing to this one. That is exactly the failure meta-push refuses a CBO parent to prevent, with no escape hatch; both these lead records predate that guard and were built by hand in Ads Manager. THE CONSEQUENCE WORTH STATING: any belief that women 18-24 do not respond to this creative on Meta has no support whatsoever. The band was never tested. Re-run it under a non-CBO parent, or as the only ad set under this one. (Five marketing_page_views rows carry this ad set's utm_term despite zero impressions - almost certainly the deploy-check traffic destinations.yaml records against /get/w-apply, not real arrivals.)
+
+- Ad set: `WOMEN_18-24_CASUAL_MOVEON-LEAD`
+- Audience: female, 18-24, IN, ANDROID, expansion off, regulated-content flagged
+- Spend: Rs 300/day x 5d
+
+## Outcome — rec-2026-08-29-moveon-lead-w2530-meta (2026-09-07)
+
+**inconclusive** — RECONCILED 2026-09-07. Ledger said 'live'; the ad set is status ACTIVE but effective_status CAMPAIGN_PAUSED - stopped by its paused parent, not by itself - and its window closed 2026-09-03. IT DELIVERED AND IT PRODUCED LEADS: Rs 636.37 spend, 4,626 impressions, 88 link clicks, 551 video views, and 29 leads at Rs 21.94 per lead. Against budget.md's ~Rs 200/signup context for women that is cheap, and it took the whole campaign's CBO budget while its 18-24 sibling got nothing. VERDICT IS inconclusive ON THE REPO'S OWN GATE, not on judgement: the stated success metric is cost per lead, the sample is 29 leads, and MIN_SAMPLE is 30. One short. Calling it 'working' would be a guess dressed as a finding, and the gate exists precisely so that does not happen quietly. THE MORE IMPORTANT NUMBER IS DOWNSTREAM AND IT IS BAD: those 29 leads produced 4 page views on /get/w-apply and ZERO signups. So the on-platform form converts cheaply and almost nobody completes the journey past it. Cost per lead is therefore measuring something that is not yet worth what it costs, and the next Meta lead test should be judged on signups, not on leads.
+
+- Ad set: `WOMEN_25-30_CASUAL_MOVEON-LEAD`
+- Audience: female, 25-30, IN, ANDROID, expansion off, regulated-content flagged
+- Spend: Rs 300/day x 5d
+
+## Outcome — rec-2026-08-29-moveon-lead-w1830-snap (2026-09-07)
+
+**inconclusive** — RECONCILED 2026-09-07; squad PAUSED since 2026-09-03. This ad (3c9d2884) was the squad's workhorse: 84,600 impressions, 889 swipes, Rs 1,094.14 - 74% of the squad's impressions and 79% of its swipes, and the single largest ad spend in this ledger. THE 13 SIGNUPS THIS SQUAD PRODUCED CANNOT BE ASSIGNED TO ANY ONE OF ITS FOUR RECORDS. Squad 85c2e782 carries four separate lead ads (moveon-lead, buildyourself-lead, moveon-swagger-lead, knowyourworth-lead) and a lead form's end page is fixed before the ad exists, so its referrer stops at SQUAD level with no utm_id. rules/tracking.md warned that two ads in one squad are indistinguishable in user_acquisition; this is that warning realised, on the only Snap funnel that has ever produced a signup. Squad totals: 114,518 impressions, 1,132 swipes, Rs 1,472.26, 45 page views on /get/w-apply, 36 store clicks, 13 signups. The 13 are real and they are the best result in this ledger; they are simply unattributable to a creative. Most of the 13 probably came from this ad on volume share alone, and 'probably' is not attribution, which is exactly why the verdict is inconclusive rather than working. Also below the gate independently: 13 signups is under MIN_SAMPLE=30. TO MAKE THIS ANSWERABLE NEXT TIME, one ad per squad, or accept that lead-funnel creative cannot be A/B tested on Snap at all.
+
+- Ad set: `WOMEN_18-30_CASUAL_MOVEON-LEAD`
+- Audience: female, 18-30, IN, ANDROID, expansion off, regulated-content flagged
+- Spend: Rs 300/day x 5d

@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-29-moveon-lead-w1830-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-LEAD
 ad_name: VID_MOVE-ON-PROPER_A_20260829
@@ -38,6 +38,8 @@ campaign_daily_cap_inr: null
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-29'
 executed: '2026-08-29'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -344,3 +346,11 @@ CTA corrected 2026-08-29 at the app owner's request: the creative shipped with c
 ## Note — incident (2026-08-31)
 
 TARGETING EXPANSION IS ON, CONTRARY TO THIS RECORD. Read live 2026-08-31 off ad squad 85c2e782: enable_targeting_expansion=true with auto_expansion_options.auto_expansion_type=SMART_TARGETING. This record's front matter says expansion: false and its own brief calls that 'the single most load-bearing setting in the build', because expansion is the mechanism by which a submit-optimised objective drifts toward men. The repo did NOT cause this: targeting.to_snap sends the flag explicitly either way (commit a29fe59) and snap_readback_checks verifies it, and auto_expansion_type is a key this repo never sends at all - so Snap set it. Cross-account check the same day: every squad reading SMART_TARGETING is a LEAD_FORM_SUBMISSIONS squad, and the one ACTIVE women's squad that holds expansion=false (WOMEN_18-30_CASUAL_MOVEON-STORY) is a non-lead squad. See lrn-2026-08-31-snap-forces-expansion-on-lead-squads. Consequence for this record's verdict: its W5 result (11F/7M/3 unclear) was produced with expansion ON, so it is evidence that the creative and destination hold up DESPITE expansion, not evidence that expansion-off was what made it work. Do not credit a setting that was not in force.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07; squad PAUSED since 2026-09-03. This ad (3c9d2884) was the squad's workhorse: 84,600 impressions, 889 swipes, Rs 1,094.14 - 74% of the squad's impressions and 79% of its swipes, and the single largest ad spend in this ledger. THE 13 SIGNUPS THIS SQUAD PRODUCED CANNOT BE ASSIGNED TO ANY ONE OF ITS FOUR RECORDS. Squad 85c2e782 carries four separate lead ads (moveon-lead, buildyourself-lead, moveon-swagger-lead, knowyourworth-lead) and a lead form's end page is fixed before the ad exists, so its referrer stops at SQUAD level with no utm_id. rules/tracking.md warned that two ads in one squad are indistinguishable in user_acquisition; this is that warning realised, on the only Snap funnel that has ever produced a signup. Squad totals: 114,518 impressions, 1,132 swipes, Rs 1,472.26, 45 page views on /get/w-apply, 36 store clicks, 13 signups. The 13 are real and they are the best result in this ledger; they are simply unattributable to a creative. Most of the 13 probably came from this ad on volume share alone, and 'probably' is not attribution, which is exactly why the verdict is inconclusive rather than working. Also below the gate independently: 13 signups is under MIN_SAMPLE=30. TO MAKE THIS ANSWERABLE NEXT TIME, one ad per squad, or accept that lead-funnel creative cannot be A/B tested on Snap at all.
+
+

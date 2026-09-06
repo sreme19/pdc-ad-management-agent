@@ -54,6 +54,32 @@ Source: Sree's Aug 7 log. Every `ad-setup-loop` recommendation must state a budg
    already made.
 4. **Exploit.** Scale the proven creative × audience × bid combination.
 
+## A market's price is a budget input, not a constant — check CPM before funding a new geo
+
+**Normative from 2026-09-07** (`lrn-2026-09-07-snap-thailand-cpm-is-27x-india`).
+
+Every figure above was calibrated on Indian inventory, and it does not travel. The first Thailand
+test spent **₹268.95 to buy 772 impressions and 3 swipes** — a **₹348 CPM**, against ₹6.50–₹12.85
+across every India squad on the same account, same creative family, same 18–30 women targeting,
+overlapping dates. **Roughly 27–54× the price for the same impression.**
+
+The damage is not the ₹269. It is that the result reads like a creative failure and is not one:
+3 swipes cannot say anything about a hook, so MOVE-ON-PROPER is **untested** in Thailand, not
+rejected. A budget too small to buy a readable sample does not produce a weak answer, it produces a
+confident-looking non-answer — and the ledger will carry it as a tested market unless someone says
+otherwise.
+
+So, before funding an ad set in a market this account has not run in:
+
+- **Estimate the impressions the budget buys at that market's CPM, not at India's.** If it does not
+  reach four figures, the test cannot be read and should not be run at the default.
+- **Fund it properly or drop the market.** Re-running Thailand at ₹300/day will reproduce this exact
+  non-result. There is no cheap version of this question.
+- **Record the market's observed CPM** on the record when the run ends, so the next proposal in that
+  geo starts from a number instead of an assumption.
+
+The ratio is the finding, not the precise multiple: n is one squad over roughly one day.
+
 ## Signup targets (context, not a hard budget rule)
 
 Most recent figures (Aug 17 log): **1,000 men signups at ~₹25/signup**, **100 women signups at

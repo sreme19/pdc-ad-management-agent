@@ -239,3 +239,11 @@ Flow-generated audio, never a commercial track), must work muted. After generati
 credit cost per candidate, run the §10 QA gate as an independent pass, check all six hands in clip 4
 individually, and prefer per-clip editing (describe the change) over full regeneration where Flow
 supports it.
+
+## Outcome — rec-2026-09-01-moveon-lead-w1830-th-snap (2026-09-07)
+
+**not-working** — RECONCILED 2026-09-07; squad b099e09c PAUSED since 2026-09-02. THE THAILAND TEST FAILED ON INVENTORY COST, NOT ON CREATIVE, AND THAT IS THE USEFUL PART. It spent Rs 268.95 to buy 772 impressions and 3 swipes. That is a CPM of Rs 348.38. Every India squad reconciled today came in between Rs 6.50 and Rs 12.85 CPM - so Snap inventory against this audience in Thailand cost roughly 27 to 54 times what the same money buys in India. Zero page views and zero signups follow trivially from 3 swipes; there is no creative read here at all and none should be inferred. The MOVE-ON-PROPER hook is untested in Thailand, not rejected. WHAT THIS DECIDES: a Rs 300/day budget cannot buy a readable Thailand test. Either fund a Thailand run at a level that produces four figures of impressions, or drop the market - do not re-run this at the India default and expect a different answer.
+
+- Ad set: `WOMEN_18-30_CASUAL_MOVEON-LEAD-TH`
+- Audience: female, 18-30, TH, ANDROID, expansion off, regulated-content flagged
+- Spend: Rs 300/day x 1d

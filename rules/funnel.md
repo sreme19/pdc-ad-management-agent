@@ -64,6 +64,36 @@ registered. Phone capture is therefore not a reason to add a field to `/get/w`; 
 test first** on that page. Re-read this section when the registration status changes —
 `lrn-2026-08-27-callcentre-blocked-on-registration` carries the review date.
 
+## 3b. One ad per squad on the Snap lead funnel — or admit you are not testing creative
+
+**Normative from 2026-09-07** (`lrn-2026-09-07-shared-squad-destroyed-per-ad-attribution`), and it is
+a rule about what a test can *mean*, not about tidiness.
+
+A Snap lead form's end page is fixed when the form is created, which is **before the ad exists**. So
+its install referrer carries the **ad squad** id and no ad id — there is no `utm_id` to carry one. Put
+four ads in one squad and the outcomes arrive as one number with four possible parents, permanently.
+Not hard to untangle: impossible, because the distinguishing field was never written.
+
+That is not hypothetical. Squad `85c2e782` carried four lead ads — MOVE-ON, BUILD-YOURSELF,
+MOVE-ON-SWAGGER, KNOW-YOUR-WORTH — and produced **13 signups, the only signups any Snap funnel has
+ever produced**, at ₹113 each against a ₹200 target. None of the four can claim them. Snap's own
+stats split the *cost* cleanly (74% / 14% / 7% / 6% of impressions); `user_acquisition` has only the
+squad, so the *outcome* cannot be split at all. **Cost is attributable and outcome is not, which is
+the worst possible pairing**: it looks like four tested hooks and it is one unreadable number plus
+three hooks that were never tested.
+
+So, when proposing a Snap lead ad:
+
+- **One ad per squad** if the point is to compare creatives. The squad id *is* the attribution key.
+- If several ads must share a squad, **say in the brief that creative attribution is being given up**,
+  and name the one thing the squad as a whole is testing. A shared squad is a budget decision, never
+  a creative test.
+- There is no third option. Choosing by default is how four hooks became one number.
+
+**This does not apply to Snap TRAFFIC ads**, whose creative URL is rewritten after the ad exists and
+so carries `utm_id` — see `lrn-2026-09-05-traffic-carries-ad-id-lead-cannot`. Do not generalise the
+rule to the funnel that does not need it.
+
 ## 4. What this file does not do
 
 It does not authorise anything. A cell on this table still passes every other gate: `compliance.md`

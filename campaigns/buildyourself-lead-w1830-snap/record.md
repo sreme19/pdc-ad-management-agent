@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-30-buildyourself-lead-w1830-snap
 network: snap
-status: live
+status: reviewed
 campaign_name: RA_LEADS_GETW-APPLY_IN_PAN_TOF_202608
 ad_set_name: WOMEN_18-30_CASUAL_MOVEON-LEAD
 ad_name: VID_BUILD-YOURSELF-FIRST_A_20260830
@@ -31,6 +31,8 @@ campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-30'
 executed: '2026-08-30'
 last_note: '2026-08-30'
+verdict: inconclusive
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -137,3 +139,11 @@ FIRST 25-second asset this account has run; every prior video was 8s or under. S
 ## Note — creative (2026-08-30)
 
 App owner reviewed this session's Sarvam-AI voiceover-narrated draft of the creative (Shreya reading the on-screen captions, mixed under the existing music bed) and rejected it outright as 'terribly bad,' without diagnosing a specific defect. No change was made to the shipped asset-a.mp4 or to this ad's PAUSED status — the narration was a rough preview only, never merged in. See lrn-2026-08-30-buildyourself-vo-rejected. Do not resume the read-the-captions-aloud VO approach on this creative without a concrete diagnosis of what was wrong.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: inconclusive
+- Summary: RECONCILED 2026-09-07; squad PAUSED since 2026-09-03. This ad (ca0e5b76) delivered 15,608 impressions, 140 swipes, Rs 195.94 - 14% of its squad's impressions. THE 13 SIGNUPS THIS SQUAD PRODUCED CANNOT BE ASSIGNED TO ANY ONE OF ITS FOUR RECORDS. Squad 85c2e782 carries four separate lead ads (moveon-lead, buildyourself-lead, moveon-swagger-lead, knowyourworth-lead) and a lead form's end page is fixed before the ad exists, so its referrer stops at SQUAD level with no utm_id. rules/tracking.md warned that two ads in one squad are indistinguishable in user_acquisition; this is that warning realised, on the only Snap funnel that has ever produced a signup. Squad totals: 114,518 impressions, 1,132 swipes, Rs 1,472.26, 45 page views on /get/w-apply, 36 store clicks, 13 signups. The 13 are real and they are the best result in this ledger; they are simply unattributable to a creative. On this ad's own share the sample is far too small to read either way, so inconclusive is the honest verdict twice over: unattributable, and under-sampled.
+
+

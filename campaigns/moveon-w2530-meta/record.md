@@ -1,7 +1,7 @@
 ---
 rec_id: rec-2026-08-27-moveon-w2530-meta
 network: meta
-status: live
+status: reviewed
 campaign_name: RA_TRAFFIC_GETW_IN_BLR_TOF_202608
 ad_set_name: WOMEN_25-30_CASUAL_MOVEON-LPV
 ad_name: STORY_MOVE-ON-PROPER_A_20260827
@@ -33,6 +33,8 @@ campaign_daily_cap_inr: null
 campaign_lifetime_cap_inr: null
 campaign_caps_verified: '2026-08-28'
 executed: '2026-08-28'
+verdict: not-working
+reviewed: '2026-09-07'
 ---
 
 ## Brief (proposed)
@@ -150,3 +152,11 @@ Day-1 four-hour watch closed, 2026-08-28. Delivery arc across 8 half-hourly read
 ## Note — observation (2026-08-28)
 
 Day-1 analytics read (2026-08-27..28, fetch-analytics --network meta). Spend Rs 237.01, 5950 impressions, 389 Meta link clicks, 397 beacon views on get_w, 5 store-click taps, 0 signups. Leaderboard tap rate 1.26% (5/397, CI 0.54-2.91%), cost per tap Rs 47.40, cost per view Rs 0.60. clickToViewRate 1.02 — beacon views essentially equal Meta's clicks, so the join is clean and there is no landing-side leak. TWO CAVEATS THAT CHANGE THE READ. (1) GEO: only 23 of 344 city-resolved views are Bengaluru; Hyderabad 27, Chennai 24, New Delhi 19+8, Mumbai 12. Confirms the pan-India deviation already noted — this is a pan-India test, not a BLR one. (2) THE TAPS ARE NOT INDIAN: byCountry shows IN 391 views / 1 tap, US 5 views / 4 taps, and all 4 US taps land in one city (Altoona) inside a single 00:15 bucket on 2026-08-28, before Indian delivery began. Read on India alone the tap rate is 1/391 = 0.26%. Nothing was excluded as a crawler for those 4, so they passed bot filtering. Also visitFunnel reports tapped=2 / 0.50% against the leaderboard's 5 — the two counts disagree and neither was recomputed here. Verdict deferred: review window opens 2026-09-02 and the ad set runs at Rs 300/day, below rules/budget.md's floor, so expect directional-only.
+
+## Review
+
+- Date: 2026-09-07
+- Verdict: not-working
+- Summary: RECONCILED 2026-09-07 against the live account; the ledger had carried this as 'live' for 10 days after it stopped. Ad set 6984035818681 and ad 6984036525881 are both PAUSED and the run window closed 2026-09-02. IT DID DELIVER, and well, at the top of the funnel: Rs 366.39 spend, 9,606 impressions, 606 link clicks, 465 Meta-counted landing-page views, and 611 page views recorded on OUR side for this ad set - so its url_tags worked and the traffic was tracked correctly end to end. THE VERDICT IS not-working BECAUSE OF WHAT HAPPENED NEXT: 611 tracked page views produced ZERO signups. That is well above MIN_SAMPLE=30, so this is a finding rather than a shrug - the ad bought attention on /get/w cheaply and none of it converted. Two caveats recorded rather than buried. (1) The record states Rs 1,000/day; the ad set's actual daily_budget was Rs 300/day, so this ran at under a third of its planned rate and never reached the Rs 800-1,200 band where budget.md says delivery exits learning - the CONVERSION read is solid on n=611 views, the cost-efficiency read is not. (2) Success metric as stated was landing-page views, and on that metric alone it succeeded; the verdict is against the outcome the views existed to produce.
+
+
