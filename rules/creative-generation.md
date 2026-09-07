@@ -240,6 +240,11 @@ is allowed to say "variant B is a UI render, not a Grok asset" and stop there.
   sits lower, so crop the bottom **90px** and rescale — `crop=in_w:in_h-90:0:0,scale=720:1280`. A clip
   that is a Flow frame animated by Grok has already had the Flow sparkle removed at the still stage, so
   it only needs the Grok 90px crop; don't double-crop.
+- **A REUSED frame is still a Flow export.** 2026-09-07: a four-point sparkle was baked into one of
+  four frames pulled from an existing creative's source folder for a new cut, and was visible in the
+  rendered plate. The mark does not care that the frame was generated weeks ago for something else.
+  Run the crop on anything that came out of Flow, however it reached you, and then zoom the corners
+  of the RENDERED output — not the source — because compositing changes what is visible where.
 - **Every Google/Flow/Gemini-exported still MUST pass through `strip_flow_watermark`** (in
   `src/ad_management_agent/watermark.py`, 150px off the bottom) before it is used in any creative — this
   is not optional and not per-frame judgement. On 2026-08-30 a live Story Ad shipped with the sparkle
@@ -263,6 +268,20 @@ generated score.
 - **Never normalise the finished mix.** Loudness normalisation across the sum destroys an intentional
   quiet-to-loud arc — an 11 dB lift collapsed to 1.1 dB. Set each bed to its own target, then peak-limit
   only. −16 LUFS integrated with true peak −1.5 dB is right for Meta and Snap.
+- **`alimiter` auto-levels its output BY DEFAULT — pass `level=disabled` or the rule above is broken
+  for you.** Found 2026-09-07 on the 30SecondSparks cut: lowering the limiter ceiling made the mix
+  *louder* (−16.6 → −15.7 LUFS), which is backwards. The filter was re-normalising the sum behind
+  the peak-limit. Nothing in the command said "normalise"; the default did it. Any peak-limiting
+  step in this repo needs that flag, and a mix whose loudness moves the wrong way when you lower a
+  ceiling is the symptom to recognise.
+- **Its ceiling is SAMPLE peak, not true peak.** Inter-sample peaks ride above it, so set the
+  ceiling below the true-peak target and then *measure* — do not assume the number you asked for is
+  the number delivered.
+- **A bed does not have to be chained when the generator returns a whole song.** Flow Music returns
+  full tracks (~2:30), so 28.5 contiguous seconds of one is a bed, not a loop, and the anti-looping
+  rule above is satisfied without spending a second generation. Pick the window off the track's
+  measured energy envelope rather than by eye: on the 30SecondSparks cut the song was near-silent to
+  2s, sparse to 14s and opened out at 16s, which put the lift within a second of the film's turn.
 - **The cut must work muted.** Most views are silent, so the type carries the whole argument. Music
   raises the ceiling; it can never be load-bearing.
 - **Snap has no audio library for a tap-through Story Ad.** Confirmed live 2026-08-30 in Ads Manager's
@@ -272,6 +291,23 @@ generated score.
   stills carries no soundtrack, full stop — do not promise "one bed across the tiles" on this format
   (the whole reason the muted-legibility rule above matters most here). If music is a hard requirement,
   the format has to be a single video ad, not a Story Ad.
+
+## 7c. Reusing imagery from an existing creative
+
+Added 2026-09-07, after the 30SecondSparks cut needed four women from the BUILD-YOURSELF carousel.
+
+- **Go to the source frames, never the finished slide.** A finished asset carries burnt-in type in
+  whatever language and register it shipped in — the carousel slides read "Phir se ghost kar diya?"
+  and "Profile kuch aur, aadmi kuch aur.", which cannot sit under an English pitch to a jury. The
+  same trap caught `moveon-swagger-video/asset-a.mp4`, whose captions, tagline and wordmark are all
+  baked in; its `source.mp4` is the usable plate.
+- **`sourcing.md` is how you find them.** A creative built by re-cutting existing stills maps every
+  slide to its origin file. That map is the fastest route from "I want that image" to a clean plate,
+  and it is why the map is worth writing.
+- **Check the models are actually different before assembling a group shot.** A 2x2 collage read as
+  one woman twice: two of the four chosen frames were the same model in the same room, and a third
+  candidate turned out to be the same model as another cell in a different outfit. That frame set
+  holds three distinct women, not four. Look at the faces side by side before you build the plate.
 
 ## 8. Variant discipline
 
