@@ -1,0 +1,5 @@
+# `creatives/*/_source/*` is ALREADY ignored repo-wide by the root .gitignore, so
+# every source this build reads is local-only. Kept explicit for the camera
+# original because it is 124MB and the one file nobody should ever try to commit.
+_source/founder-raw.mp4
+_build/
