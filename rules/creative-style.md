@@ -20,8 +20,7 @@ Primary: **"Meet who you actually want — in minutes, not months."**
 
 Site-native alternatives (pick to match the specific hook, don't reuse the same one across every ad in
 a set):
-- No swipes. Ever. Just matches.
-- Verified, not vibes.
+- No swipes. Ever. Just matches. *(also good trimmed to just "No Swipes. Ever." — see below)*
 - We do the matching. You skip the work.
 - Proven, not just claimed.
 - A shortlist that means something — instead of a flood or a desert.
@@ -29,6 +28,28 @@ a set):
 - You finally have real choice. *(men)*
 - You finally have a shortlist that means something. *(women)*
 - The AI does the searching. You do the meeting.
+
+**Retired 2026-09-07: "Verified, not vibes."** The app owner's call, made while cutting
+`creatives/30secondsparks-founder-pitch`. Do not reach for it in new work. It is left listed nowhere
+above on purpose — a retired line that stays in the list gets used.
+
+What replaced it on that asset was **"No Swipes. Ever."**, which is not a new line: it is the
+existing site-native "No swipes. Ever. Just matches." trimmed to its first half. Worth knowing
+before anyone treats the trim as an invention needing approval.
+
+**It was verified against the product before use, and that check is repeatable.** "No swipes" is an
+absolute claim about behaviour, so it was checked rather than assumed: `SwipeCard.svelte` exists in
+`pocket-dating-coach` but is never mounted anywhere, and the only other hit is an e2e test whose
+body is `expect(true).toBe(true)`. The live Discover feed uses buttons — Admire, Notice me, like,
+`Next`. If a swipe mechanic is ever shipped, this line dies with it.
+
+**Two shipped build scripts still emit the retired line and have deliberately NOT been changed:**
+`creatives/moveon-swagger-video/typeset_video.py` (FOOT_TAGLINE / END_TAGLINE) and
+`creatives/moveon-properly-w2530/typeset.py`. Their assets are already live with it, and rewriting a
+shipped creative's source so it no longer matches the asset in Ads Manager trades one problem for a
+worse one. The consequence to know: **re-running either script re-emits a retired tagline.** Change
+the constant at that point, not before. Campaign records and QA docs that quote the line are records
+of what shipped and must not be edited at all.
 
 ## Ad-ready emotional threads (the strongest available hooks)
 
